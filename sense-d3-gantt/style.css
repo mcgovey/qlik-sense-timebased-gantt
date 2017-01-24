@@ -1,0 +1,21 @@
+.qv-object-sense-d3-gantt div.qv-object-content-container {
+	overflow: auto;
+}
+.qv-object-sense-d3-gantt td,
+.qv-object-sense-d3-gantt th {
+	border-top: 0px solid #fff;
+	border-bottom: 1px solid #ddd;
+	border-right: 1px solid #ddd;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	vertical-align: middle;
+	cursor: default;
+	font-size: 12px;
+}
+.qv-object-sense-d3-gantt td.numeric {
+	text-align: right;
+}
+.qv-object-sense-d3-gantt button {
+	width: 100%;
+}
