@@ -168,7 +168,7 @@ var senseD3 = {
             var tempDataArr ={};
             for (var j = labels.length - 1; j >= 0; j--) {
                 //add id to object
-                tempDataArr.id  = j;
+                tempDataArr.id  = datapts[index][j].qElemNumber;
 
                 if (j<numOfDims) {
                     tempDataArr[ 'dim_' + j ] = datapts[index][j].qText;

@@ -31,7 +31,7 @@ function createYScale( data, height ) {
 // Create yScale component ///////////////////
 //////////////////////////////////////////////
 	let yScale 	= d3.scaleBand().rangeRound([0, height])
-					.domain(data.map(function (d) { return d.Role; }));
+					.domain(data.map(function (d) { return d.Dim; }));
 
 	return yScale;
 }
@@ -50,7 +50,7 @@ function resizeChart( data ) {
 		yAxisEl		= artboard.select('g.yAxis.gantt');
 
 	// create dynamic sizing
-	let	divWidth 		= parseInt(chart.style('width'), 10),
+		divWidth 		= parseInt(chart.style('width'), 10),
 		divHeight		= parseInt(chart.style('height'), 10),
 		margin 			= {right: 20, bottom: 30},
 		margin.left 	= divWidth <= 480 ? 0 : 100,
@@ -58,7 +58,6 @@ function resizeChart( data ) {
 		width 			= divWidth - margin.left - margin.right,
 		height 			= divHeight - margin.top - margin.bottom;
 
-console.log('chart divheight', divHeight, 'chart', height);
 	// set data related vars
 	let xScale 		= createXScale( data ),
 		yScale 		= createYScale( data, height ),
@@ -92,7 +91,7 @@ console.log('chart divheight', divHeight, 'chart', height);
 //=====================================================================
      		.attr('height', (height * .115))
 			.attr("y", function(d) {
-				return yScale(d.Role);
+				return yScale(d.Dim);
 			})
 		.transition()
 			.duration(1000)
@@ -124,7 +123,27 @@ console.log('chart divheight', divHeight, 'chart', height);
 
 }
 
-function displayExperience( data ) {
+function barSelector( selections, api ) {
+//////////////////////////////////////////////
+// Create bar selection component ////////////
+//////////////////////////////////////////////
+	//create selector vars
+	let chart 		= d3.select("div#gantt"),
+		svg 		= chart.select('svg'),
+		artboard 	= svg.select('g.axisBoard'),
+		bars		= svg.selectAll('g#bars > rect');
+
+	//add click event
+	bars.on("click",function (d) {
+console.log('clicked element', d, 'api', api);
+		// selections.selectedValue
+		api.selectValues(0, [d.ID], true);
+    });
+
+	return selections;
+}
+
+function displayExperience( data, api ) {
 
 	//////////////////////////////////////////////
 	// Chart Config /////////////////////////////
@@ -157,7 +176,7 @@ function displayExperience( data ) {
 		.append("svg");
 
  	// set the domain range for colors from the data
-	yScale.domain(data.map(function (d) { return d.Role; }));
+	yScale.domain(data.map(function (d) { return d.Dim; }));
 	colorScale.domain([-1, d3.max(data, function(d, i) { return i; })]);
 
   // create element for where elements will be drawn
@@ -185,7 +204,7 @@ function displayExperience( data ) {
        return xScale(minDate);
      })
      .attr("y", function(d) {
-       return yScale(d.Role);
+       return yScale(d.Dim);
      })
      .attr('width', 0)
      .attr('height', (height * .115))
@@ -197,7 +216,8 @@ function displayExperience( data ) {
     .style("stroke-width", 0.25)
     // add tooltips to each bar
     .on("mouseover", tooltipStart)          
-    .on("mouseout", tooltipEnd);
+    .on("mouseout", tooltipEnd)
+    ;
 
 
 
@@ -206,7 +226,7 @@ function displayExperience( data ) {
     tooltipDiv.transition()
       .duration(200)
       .style("opacity", .9);
-    tooltipDiv .html( d.Role+ " from " + d.TimeStart.format("MMM YYYY") + ' to ' + d.TimeEnd.format("MMM YYYY"))
+    tooltipDiv .html( d.Dim+ " from " + d.TimeStart.format("MMM YYYY") + ' to ' + d.TimeEnd.format("MMM YYYY"))
       .style("left", (d3.event.pageX) + "px")
       .style("top", (d3.event.pageY - 28) + "px");
   }
@@ -247,15 +267,43 @@ function displayExperience( data ) {
 				measures : {
 					uses : "measures",
 					min : 1,
-					max : 1,
-					items : {
-						ColorProp : {
-							type			: "string",
-							label 			: "Color Expression",
-							ref 			: "qAttributeExpressions.0.qExpression",
-							expression 		: "always",
-							defaultValue	: ""
-						}
+					max : 1
+					// ,items : {
+					// 	ColorProp : {
+					// 		type			: "string",
+					// 		label 			: "Color Expression",
+					// 		ref 			: "qAttributeExpressions.0.qExpression",
+					// 		expression 		: "always",
+					// 		defaultValue	: ""
+					// 	}
+					// }
+					,items: {
+						colorType: {
+							ref: "qDef.colorType",
+							label: "Color Format",
+							type: "string",
+							component: "dropdown",
+							options: 
+								[{
+									value: "stdNoStatus",
+									label: "No Status Indicator"
+								}, 
+								{
+									value: "useStatus",
+									label: "Status Indicator"
+								}]
+						},
+						color: {
+							ref: "qAttributeExpressions.0.qExpression",
+							label: "Status Colors",
+							type: "string",
+							expression: "optional",
+							defaultValue: "",
+							show: function(data) {
+							// console.log(data);
+							return data.qDef.colorType == "useStatus";
+							}
+						}//test expression: if(WildMatch([Project Name],'*tableau*'),'test4','text1')
 					}
 				},
 				//MAX(IF([Project Start Date]<>'NA',[Project End Date]-[Project Start Date],0))
@@ -290,10 +338,10 @@ function displayExperience( data ) {
 			app_this = this;
 
 			// set layout variable to create id used to set the div id
-			this.$scope.id= layout.qInfo.qId;
+			app_this.$scope.id= layout.qInfo.qId;
 
 			// set layout variables for panel display show/hide
-			this.$scope.$watch("layout", function (newVal, oldVal) {
+			app_this.$scope.$watch("layout", function (newVal, oldVal) {
 				// let calcCondition = ((layout.properties.mapData.calculationConditionToggle==true && layout.properties.mapData.calculationCondition==-1) || layout.properties.mapData.calculationConditionToggle!=true) ? -1 : 0,
 				// 	calcConditionMsg = (layout.properties.mapData.calculationConditionMessage === "" || layout.properties.mapData.calculationConditionMessage === null)? "Calculation condition unfulfilled" : layout.properties.mapData.calculationConditionMessage;
 
@@ -304,13 +352,13 @@ function displayExperience( data ) {
 				// };
 
 				//set flag to re-render below anytime preferences are changed
-				this.painted = false;
+				app_this.painted = false;
 
 			});
 
 			//control initialization to only paint once
-			if(this.painted) return;  
-			this.painted = true;
+			if(app_this.painted) return;  
+			app_this.painted = true;
 
 //=======================================================================================
 //Reference chart by ID
@@ -324,8 +372,8 @@ function displayExperience( data ) {
 			data = ganttData.map(function (inner_d) {
 				// Create an array of objects with only the length, experience, company, and role type
 				var indivJob = {
-				  'Role'      : inner_d.dim_0,
-				  'RoleID'    : +inner_d.id,
+				  'Dim'      : inner_d.dim_0,
+				  'ID'    : inner_d.id,
 				  'TimeStart' : moment(inner_d.dim_1, "M/D/YYYY"),
 				  'TimeEnd'   : moment(inner_d.dim_1, "M/D/YYYY").add(+inner_d.meas_0, 'days')
 				}
@@ -333,8 +381,10 @@ function displayExperience( data ) {
 				return indivJob;
 			});
 
-			this.$scope.data = data;
-// console.log('cleaned data', data);
+console.log('data struc', layout.qHyperCube.qDataPages[0].qMatrix);
+
+			app_this.$scope.data = data;
+console.log('cleaned data', data);
 
 
 //=======================================================================================
@@ -342,14 +392,17 @@ function displayExperience( data ) {
 //=======================================================================================
 			displayExperience( data );
 
+			app_this.selections = barSelector( app_this.selections, this.backendApi );
+
 //=======================================================================================
 //Delete this section after above is raring to go! setup scope.table
 //=======================================================================================
-			if ( !this.$scope.table ) {
-				this.$scope.table = qlik.table( this );
+			if ( !app_this.$scope.table ) {
+				app_this.$scope.table = qlik.table( this );
 			}
 
-console.log('$scope', this.$scope);
+// console.log('table cleaner', senseD3.createJSONObj( app_this.$scope.table ));
+console.log('$scope', app_this.$scope);
 
 			return qlik.Promise.resolve();
 		},

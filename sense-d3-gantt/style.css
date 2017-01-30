@@ -33,3 +33,6 @@
 .qv-object-sense-d3-gantt .yAxis.gantt line {
 	display       : none;
 }
+g#bars:hover {
+	cursor: pointer;
+}
