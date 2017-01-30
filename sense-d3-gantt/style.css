@@ -19,3 +19,17 @@
 .qv-object-sense-d3-gantt button {
 	width: 100%;
 }
+.qv-object-sense-d3-gantt div.tooltip { 
+	position      : absolute;
+	text-align    : center;
+	width         : 150px;
+	padding       : 2px;
+	font          : 12px sans-serif;
+	background    : lightgrey;
+	border        : 0px;
+	border-radius : 8px;
+	pointer-events: none;
+}
+.qv-object-sense-d3-gantt .yAxis.gantt line {
+	display       : none;
+}

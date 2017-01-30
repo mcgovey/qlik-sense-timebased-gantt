@@ -1,0 +1,14 @@
+{
+  "name": "QlikSenseD3Utils",
+  "homepage": "https://github.com/brianwmunz/QlikSenseD3Utils",
+  "_release": "7c3de106d1",
+  "_resolution": {
+    "type": "branch",
+    "branch": "master",
+    "commit": "7c3de106d10144d081242693326515b305366184"
+  },
+  "_source": "https://github.com/brianwmunz/QlikSenseD3Utils.git",
+  "_target": "*",
+  "_originalSource": "https://github.com/brianwmunz/QlikSenseD3Utils.git",
+  "_direct": true
+}

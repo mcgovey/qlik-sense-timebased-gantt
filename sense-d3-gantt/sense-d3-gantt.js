@@ -2,20 +2,15 @@ define( ["qlik"
 		,"jquery"
 		, "text!./style.css"
 		, "text!./template.html"
-		// , "./assets/js/drawchart"
 		,'//d3js.org/d3.v4.min.js'
 		,'require'
 		,'https://momentjs.com/downloads/moment.js'
+		,'./bower_components/QlikSenseD3Utils/senseD3utils'
 		// ,'https://d3js.org/d3-scale-chromatic.v1.min.js'
 		], 
-	function (qlik, $, cssContent, template, /*displayExperience,*/ d3, localRequire, moment) {
+	function (qlik, $, cssContent, template, d3, localRequire, moment) {
 
-
-//------------------------Temporarily include data for extension validation
-var path = localRequire.toUrl( "extensions/sense-d3-gantt/assets/data/profile.csv" );
-
-
-	'use strict';
+	// 'use strict';
     $("<style>").html(cssContent).appendTo("head");
 
 
@@ -25,7 +20,7 @@ function displayExperience( data ) {
   //////////////////////////////////////////////
 
   // Define the div for the tooltip
-  let tooltipDiv = d3.select("div#gannt").append("div") 
+  let tooltipDiv = d3.select("div#gantt").append("div") 
       .attr("class", "tooltip")       
       .style("opacity", 0);
 
@@ -46,7 +41,7 @@ function displayExperience( data ) {
       minDate     = d3.min(data, function(d) { return d.TimeStart.toDate(); });
 
   // Add the svg canvas
-  var svg = d3.select("div#gannt")
+  var svg = d3.select("div#gantt")
       .append("svg")
   		.attr("height", height + margin.top + margin.bottom);
 
@@ -81,8 +76,6 @@ function displayExperience( data ) {
      .selectAll("rect")
      .data( data )
      .enter()
-     .append("svg:a")
-     .attr("xlink:href", function(d){return '#divDetails_'+d.RoleID;})
      .append("rect")
      .attr("x", function (d) {
        return xScale(minDate);
@@ -109,7 +102,7 @@ function displayExperience( data ) {
     tooltipDiv.transition()
       .duration(200)
       .style("opacity", .9);
-    tooltipDiv .html( d.Role+ " at " + d.Firm + " from " + d.TimeStart.format("MMM YYYY") + ' to ' + d.TimeEnd.format("MMM YYYY"))
+    tooltipDiv .html( d.Role+ " from " + d.TimeStart.format("MMM YYYY") + ' to ' + d.TimeEnd.format("MMM YYYY"))
       .style("left", (d3.event.pageX) + "px")
       .style("top", (d3.event.pageY - 28) + "px");
   }
@@ -130,7 +123,7 @@ function displayExperience( data ) {
   function drawChart() {
 
     // reset the width
-    divWidth      = parseInt(d3.select("div#gannt").style('width'), 10),
+    divWidth      = parseInt(d3.select("div#gantt").style('width'), 10),
       margin.left = divWidth <= 480 ? 0 : 100,
       margin.top  = divWidth <= 480 ? 0 : 30,
       width       = divWidth - margin.left - margin.right;
@@ -211,8 +204,19 @@ function displayExperience( data ) {
 				},
 				measures : {
 					uses : "measures",
-					min : 0
+					min : 1,
+					max : 1,
+					items : {
+						ColorProp : {
+							type			: "string",
+							label 			: "Color Expression",
+							ref 			: "qAttributeExpressions.0.qExpression",
+							expression 		: "always",
+							defaultValue	: ""
+						}
+					}
 				},
+				//MAX(IF([Project Start Date]<>'NA',[Project End Date]-[Project Start Date],0))
 				sorting : {
 					uses : "sorting"
 				},
@@ -236,51 +240,61 @@ function displayExperience( data ) {
 		},
 		paint: function ( $element, layout ) {
 
+			app_this = this;
 
+			// set layout variable to create id used to set the div id
+			this.$scope.id= layout.qInfo.qId;
 
-			d3.csv(path, function ( d ) {
-				console.log('csv data', d);
+			// set layout variables for panel display show/hide
+			this.$scope.$watch("layout", function (newVal, oldVal) {
+				// let calcCondition = ((layout.properties.mapData.calculationConditionToggle==true && layout.properties.mapData.calculationCondition==-1) || layout.properties.mapData.calculationConditionToggle!=true) ? -1 : 0,
+				// 	calcConditionMsg = (layout.properties.mapData.calculationConditionMessage === "" || layout.properties.mapData.calculationConditionMessage === null)? "Calculation condition unfulfilled" : layout.properties.mapData.calculationConditionMessage;
 
-				// initialize storage arrays
-				var roleIDArr = [], jobLvlData = [], skillsData = [];
-				data = d.map(function (inner_d) {
-				    //initialize profiletext counter
+				// app_this.$scope.vars = {
+				// 	panelDisplay		: layout.properties.p2pConfig.drivingModeConfig.mapPanelBool,
+				// 	calcCondition 		: calcCondition,
+				// 	calcConditionStmt	: calcConditionMsg
+				// };
 
-				    // Only get rows with experience data
-				    if (inner_d.Type=='Experience') {
-
-				      // Create an array of objects with only the length, experience, company, and role type
-				      // Check if the role ID does not exist in the array yet
-				      // If it is not been found yet, store it in an array, create a list group box and store the first desc
-				      if ($.inArray(+inner_d.RoleID, roleIDArr) == -1) {
-				        //add the role to the array t
-				        roleIDArr.push(+inner_d.RoleID);
-				        var indivJob = {
-				          'Firm'      : inner_d.Firm,
-				          'Location'  : inner_d.Location,
-				          'Role'      : inner_d.Role,
-				          'RoleID'    : +inner_d.RoleID,
-				          'TimeStart' : moment(inner_d.TimeStart, "YY-MMM"),
-				          'TimeEnd'   : inner_d.TimeEnd ? moment(inner_d.TimeEnd, "YY-MMM") : moment()
-				        }
-
-				        jobLvlData.push(indivJob);
-				    	}
-					}
-				});
-
-				console.log('jobdata', jobLvlData);
-
-//will eventually want to pass div id for selector as well
-
-				displayExperience(jobLvlData);
+				//set flag to re-render below anytime preferences are changed
+				this.painted = false;
 
 			});
 
-			//setup scope.table
+			//control initialization to only paint once
+			if(this.painted) return;  
+			this.painted = true;
+//-------------------------------------------------------------------------Reference chart by ID
+			$('div#gantt').empty();
+
+			let numOfDims 	= senseD3.findNumOfDims(layout),
+				ganttData	= senseD3.createJSONObj(layout, numOfDims);
+
+
+			data = ganttData.map(function (inner_d) {
+				// Create an array of objects with only the length, experience, company, and role type
+				var indivJob = {
+				  'Role'      : inner_d.dim_0,
+				  'RoleID'    : +inner_d.id,
+				  'TimeStart' : moment(inner_d.dim_1, "M/D/YYYY"),
+				  'TimeEnd'   : moment(inner_d.dim_1, "M/D/YYYY").add(+inner_d.meas_0, 'days')
+				}
+
+				return indivJob;
+			});
+console.log('cleaned data', data);
+
+
+//will eventually want to pass div id for selector as well
+			displayExperience(data);
+
+//-----------------------------------Delete this section after above is raring to go! setup scope.table
 			if ( !this.$scope.table ) {
 				this.$scope.table = qlik.table( this );
 			}
+
+console.log('$scope', this.$scope);
+
 			return qlik.Promise.resolve();
 		},
 		controller: ['$scope', function (/*$scope*/) {
