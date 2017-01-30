@@ -13,24 +13,109 @@ define( ["qlik"
 	// 'use strict';
     $("<style>").html(cssContent).appendTo("head");
 
+function createXScale( data ) {
+//////////////////////////////////////////////
+// Create xScale component ///////////////////
+//////////////////////////////////////////////
+	let xScale      = d3.scaleTime().
+						domain([
+							d3.min(data, function(d) { return d.TimeStart.toDate(); }),
+							d3.max(data, function(d) { return d.TimeEnd.toDate(); })
+						]);
+
+	return xScale;
+}
+
+function resizeChart( data ) {
+//////////////////////////////////////////////
+// Draw key size-based element ///////////////
+//////////////////////////////////////////////
+
+	//create selector vars
+	let chart 		= d3.select("div#gantt"),
+		svg 		= chart.select('svg'),
+		artboard 	= svg.select('g.axisBoard'),
+		bars		= svg.selectAll('g#bars > rect'),
+		xAxisEl		= artboard.select('g.xAxis.gantt'),
+		yAxisEl		= artboard.select('g.yAxis.gantt');
+
+// console.log('called xAxisEl', xAxisEl);
+
+	// create dynamic sizing
+	divWidth 		= parseInt(chart.style('width'), 10),
+	margin 			= {right: 20, bottom: 30},
+	margin.left 	= divWidth <= 480 ? 0 : 100,
+	margin.top 		= divWidth <= 480 ? 0 : 30,
+	width 			= divWidth - margin.left - margin.right;
+
+	// set data related vars
+	let xScale 		= createXScale( data ),
+		minDate		= d3.min(data, function(d) { return d.TimeStart.toDate(); }),
+		xAxis       = d3.axisBottom().scale( xScale );
+
+	// translate g inside svg for axis container
+	artboard.attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+
+	// set the svg dimensions
+	svg.attr("width", width + margin.left + margin.right);
+
+	// Set new range for xScale
+	xScale.range([0, width]);
+
+	// give the x axis the resized scale
+	xAxis.scale(xScale);
+
+	// draw the new xAxis
+	xAxisEl.call(xAxis);
+
+	// create transition
+	let t = d3.transition()
+	  .duration(1000)
+	  .ease(d3.easeLinear);
+
+	//Create bars
+	bars.attr("transform", "translate(" + margin.left + "," + (margin.top-30) + ")")
+	  .transition(t)
+	    .delay(function(d, i) { return i * 500; })
+	    .attr("x", function (d) {
+	       return xScale(d.TimeStart.toDate());
+	     })
+	    .attr('width', function(d){
+	       let taskDuration = moment(moment(d.TimeStart).diff(minDate));
+	       let barLength = moment(d.TimeEnd.diff(taskDuration));
+	       return xScale(barLength.toDate());
+	    })
+	 ;
+
+	// yAxisEl.selectAll(".tick text")
+	//       // .call(wrap, (margin.left * 0.9))
+	//       ;
+
+	//change xaxis and translations if width below "small" screen size breakpoint
+	yAxisEl.transition(t)
+	  .style("opacity",(width<=480 ? 0 : 1))
+
+}
 
 function displayExperience( data ) {
+
   //////////////////////////////////////////////
   // Chart Config /////////////////////////////
   //////////////////////////////////////////////
+  let chart = d3.select("div#gantt");
 
   // Define the div for the tooltip
-  let tooltipDiv = d3.select("div#gantt").append("div") 
+  let tooltipDiv = chart.append("div") 
       .attr("class", "tooltip")       
       .style("opacity", 0);
 
   // Set the dimensions of the canvas / graph
   var margin      = {top: 30, right: 20, bottom: 30, left: 100},
   		width,      // width gets defined below
-      height      = 450 - margin.top - margin.bottom;
+      	height      = 450 - margin.top - margin.bottom;
 
   // Set the scales ranges
-  var xScale      = d3.scaleTime(),
+  var xScale      = createXScale( data ), //d3.scaleTime(),
       yScale      = d3.scaleBand().rangeRound([0, height]),
       colorScale  = d3.scaleSequential(d3.interpolatePuBuGn);
 
@@ -41,20 +126,17 @@ function displayExperience( data ) {
       minDate     = d3.min(data, function(d) { return d.TimeStart.toDate(); });
 
   // Add the svg canvas
-  var svg = d3.select("div#gantt")
+  var svg = chart
       .append("svg")
   		.attr("height", height + margin.top + margin.bottom);
 
-  // set the domain range from the data
-  xScale.domain([
-		minDate,
-		d3.max(data, function(d) { return d.TimeEnd.toDate(); })
-	]);
+ //  // set the domain range from the data
   yScale.domain(data.map(function (d) { return d.Role; }));
   colorScale.domain([-1, d3.max(data, function(d, i) { return i; })]);
 
   // create element for where elements will be drawn
   var artboard = svg.append("g")
+  	.classed('axisBoard', true);
     // .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
     // .attr("transform", "translate(0," + margin.top + ")");
 
@@ -114,63 +196,64 @@ function displayExperience( data ) {
       .style("opacity", 0);
   }
 
+///=========================Replace with resize func ==============================
   // call this once to draw the chart initially
-  drawChart();
+  // drawChart();
+  resizeChart( data );
 
-  //////////////////////////////////////////////
-  // Drawing ///////////////////////////////////
-  //////////////////////////////////////////////
-  function drawChart() {
 
-    // reset the width
-    divWidth      = parseInt(d3.select("div#gantt").style('width'), 10),
-      margin.left = divWidth <= 480 ? 0 : 100,
-      margin.top  = divWidth <= 480 ? 0 : 30,
-      width       = divWidth - margin.left - margin.right;
+	// function drawChart() {
+	// //artboard, svg, xScale, xAxis, xAxisEl, bars, yAxisEl
+	// 	//create selector vars
 
-    artboard.attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+	// 	// reset the width
+	// 	divWidth      = parseInt(d3.select("div#gantt").style('width'), 10),
+	// 	  margin.left = divWidth <= 480 ? 0 : 100,
+	// 	  margin.top  = divWidth <= 480 ? 0 : 30,
+	// 	  width       = divWidth - margin.left - margin.right;
 
-    // set the svg dimensions
-    svg.attr("width", width + margin.left + margin.right);
+	// 	artboard.attr("transform", "translate(" + margin.left + "," + margin.top + ")")
 
-    // Set new range for xScale
-    xScale.range([0, width]);
+	// 	// set the svg dimensions
+	// 	svg.attr("width", width + margin.left + margin.right);
 
-    // give the x axis the resized scale
-    xAxis.scale(xScale);
+	// 	// Set new range for xScale
+	// 	xScale.range([0, width]);
 
-    // draw the new xAxis
-    xAxisEl.call(xAxis);
+	// 	// give the x axis the resized scale
+	// 	xAxis.scale(xScale);
 
-    // create transition
-    var t = d3.transition()
-      .duration(1500)
-      .ease(d3.easeLinear);
+	// 	// draw the new xAxis
+	// 	xAxisEl.call(xAxis);
 
-    //Create bars
-    bars.attr("transform", "translate(" + margin.left + "," + (margin.top-30) + ")")
-      .transition(t)
-        .delay(function(d, i) { return i * 500; })
-        .attr("x", function (d) {
-           return xScale(d.TimeStart.toDate());
-         })
-        .attr('width', function(d){
-           var taskDuration = moment(moment(d.TimeStart).diff(minDate));
-           var barLength = moment(d.TimeEnd.diff(taskDuration));
-           return xScale(barLength.toDate());
-        })
-     ;
+	// 	// create transition
+	// 	var t = d3.transition()
+	// 	  .duration(1500)
+	// 	  .ease(d3.easeLinear);
 
-    yAxisEl.selectAll(".tick text")
-          // .call(wrap, (margin.left * 0.9))
-          ;
+	// 	//Create bars
+	// 	bars.attr("transform", "translate(" + margin.left + "," + (margin.top-30) + ")")
+	// 	  .transition(t)
+	// 	    .delay(function(d, i) { return i * 500; })
+	// 	    .attr("x", function (d) {
+	// 	       return xScale(d.TimeStart.toDate());
+	// 	     })
+	// 	    .attr('width', function(d){
+	// 	       var taskDuration = moment(moment(d.TimeStart).diff(minDate));
+	// 	       var barLength = moment(d.TimeEnd.diff(taskDuration));
+	// 	       return xScale(barLength.toDate());
+	// 	    })
+	// 	 ;
 
-    //change xaxis and translations if width below "small" screen size breakpoint
-    yAxisEl.transition(t)
-      .style("opacity",(width<=480 ? 0 : 1))
+	// 	yAxisEl.selectAll(".tick text")
+	// 	      // .call(wrap, (margin.left * 0.9))
+	// 	      ;
 
-  }
+	// 	//change xaxis and translations if width below "small" screen size breakpoint
+	// 	yAxisEl.transition(t)
+	// 	  .style("opacity",(width<=480 ? 0 : 1))
 
+	// }
 
 
   //////////////////////////////////////////////
@@ -238,6 +321,12 @@ function displayExperience( data ) {
 			export: true,
 			exportData : true
 		},
+		resize: function (layout) {
+			let data = this.$scope.data;
+
+			resizeChart( data );
+// console.log('resize fired', layout);
+		},
 		paint: function ( $element, layout ) {
 
 			app_this = this;
@@ -282,7 +371,9 @@ function displayExperience( data ) {
 
 				return indivJob;
 			});
-console.log('cleaned data', data);
+
+			this.$scope.data = data;
+// console.log('cleaned data', data);
 
 
 //will eventually want to pass div id for selector as well
