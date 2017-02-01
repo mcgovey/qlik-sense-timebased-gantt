@@ -414,21 +414,21 @@ function displayExperience( data, api ) {
 					dynamicColorVals = selectedScale[inner_d.id % selectedScale.length];
 				} else {
 					dynamicColorVals = '#000000';
-				}
-				// Create an array of objects with only the length, experience, company, and role type
+				};
+				// Create an array of objects with only the dimension, id, start, end, and color
 				var indivJob = {
-				  'Dim'			: inner_d.dim_0,
-				  'ID'			: inner_d.id,
-				  'TimeStart'	: moment(inner_d.dim_1, "M/D/YYYY"),
-				  'TimeEnd'		: moment(inner_d.dim_1, "M/D/YYYY").add(+inner_d.meas_0, 'days'),
+				  'Dim'			: inner_d.dim_0 || 'N/A',
+				  'ID'			: inner_d.id || 0,
+				  'TimeStart'	: inner_d.dim_1 ? moment(inner_d.dim_1, "M/D/YYYY") : moment(),
+				  'TimeEnd'		: inner_d.dim_1 ? moment(inner_d.dim_1, "M/D/YYYY").add(+inner_d.meas_0, 'days') : moment().add(1,'w'),
 				  'Color'		: dynamicColorVals
-				}
+				};
 				return indivJob;
 			});
 // console.log('data struc', layout);
 
 			app_this.$scope.data = data;
-// console.log('cleaned data', data);
+console.log('cleaned data', data);
 
 
 //=======================================================================================

@@ -149,7 +149,8 @@ define( [], function () {
 			items : {
 				dimensions : {
 					uses : "dimensions",
-					min : 1
+					min : 1,
+					max : 2
 				},
 				measures : {
 					uses : "measures",
