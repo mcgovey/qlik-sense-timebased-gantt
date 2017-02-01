@@ -210,7 +210,7 @@ function displayExperience( data, api ) {
      .attr('height', (height * .115))
      .attr('fill', function (d, i) {
       // colorScale(i)
-       return 'black';
+       return d.Color;
      })
     .style("stroke", 'black')
     .style("stroke-width", 0.25)
@@ -267,17 +267,8 @@ function displayExperience( data, api ) {
 				measures : {
 					uses : "measures",
 					min : 1,
-					max : 1
-					// ,items : {
-					// 	ColorProp : {
-					// 		type			: "string",
-					// 		label 			: "Color Expression",
-					// 		ref 			: "qAttributeExpressions.0.qExpression",
-					// 		expression 		: "always",
-					// 		defaultValue	: ""
-					// 	}
-					// }
-					,items: {
+					max : 1,
+					items: {
 						colorType: {
 							ref: "qDef.colorType",
 							label: "Color Format",
@@ -300,7 +291,7 @@ function displayExperience( data, api ) {
 							expression: "optional",
 							defaultValue: "",
 							show: function(data) {
-							// console.log(data);
+// console.log('show info', data);
 							return data.qDef.colorType == "useStatus";
 							}
 						}//test expression: if(WildMatch([Project Name],'*tableau*'),'test4','text1')
@@ -368,20 +359,21 @@ function displayExperience( data, api ) {
 			let numOfDims 	= senseD3.findNumOfDims(layout),
 				ganttData	= senseD3.createJSONObj(layout, numOfDims);
 
+console.log('gantt data', ganttData);
 
 			data = ganttData.map(function (inner_d) {
 				// Create an array of objects with only the length, experience, company, and role type
 				var indivJob = {
-				  'Dim'      : inner_d.dim_0,
-				  'ID'    : inner_d.id,
-				  'TimeStart' : moment(inner_d.dim_1, "M/D/YYYY"),
-				  'TimeEnd'   : moment(inner_d.dim_1, "M/D/YYYY").add(+inner_d.meas_0, 'days')
+				  'Dim'			: inner_d.dim_0,
+				  'ID'			: inner_d.id,
+				  'TimeStart'	: moment(inner_d.dim_1, "M/D/YYYY"),
+				  'TimeEnd'		: moment(inner_d.dim_1, "M/D/YYYY").add(+inner_d.meas_0, 'days'),
+				  'Color'		: inner_d.meas_0_color
 				}
-
 				return indivJob;
 			});
 
-console.log('data struc', layout.qHyperCube.qDataPages[0].qMatrix);
+// console.log('data struc', layout.qHyperCube.qDataPages[0].qMatrix);
 
 			app_this.$scope.data = data;
 console.log('cleaned data', data);

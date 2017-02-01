@@ -171,15 +171,41 @@ var senseD3 = {
                 tempDataArr.id  = datapts[index][j].qElemNumber;
 
                 if (j<numOfDims) {
-                    tempDataArr[ 'dim_' + j ] = datapts[index][j].qText;
-                    tempDataArr[ labels[j] ] = datapts[index][j].qText;
+                    //use standard dim number to store data
+                    tempDataArr[ 'dim_' + j ]           = datapts[index][j].qText;
+
+                    //use variable names to store data
+                    tempDataArr[ labels[j] ]                        = datapts[index][j].qText;
                 } else{
-                    tempDataArr['meas_' + (j-numOfDims) ] = datapts[index][j].qNum=="NaN" ? datapts[index][j].qText:datapts[index][j].qNum;
-                    tempDataArr['meas_' + (j-numOfDims) + '_txt'] = datapts[index][j].qText;
-                    tempDataArr[labels[j]] = datapts[index][j].qNum=="NaN" ? datapts[index][j].qText:datapts[index][j].qNum;
-                    tempDataArr[labels[j]+'_txt'] = datapts[index][j].qText;
+                    //use standard dim number to store data
+                    tempDataArr['meas_' + (j-numOfDims) ]           = datapts[index][j].qNum=="NaN" ? datapts[index][j].qText : datapts[index][j].qNum;
+                    tempDataArr['meas_' + (j-numOfDims) + '_txt']   = datapts[index][j].qText;
+
+                    //use variable names to store data
+                    tempDataArr[labels[j]]                          = datapts[index][j].qNum=="NaN" ? datapts[index][j].qText : datapts[index][j].qNum;
+                    tempDataArr[labels[j]+'_txt']                   = datapts[index][j].qText;
+
+                    //store attribute expressions
+                    if (datapts[index][j].qAttrExps) {
+                        let colorVal;
+                        if (datapts[index][j].qAttrExps.qValues[0].qText) {
+                            // get the value if it is a string
+                            colorVal    = datapts[index][j].qAttrExps.qValues[0].qText;
+                        } else if (datapts[index][j].qAttrExps.qValues[0].qNum){
+                            // if a number is contained in the expression - convert to hex
+                            colorVal    = '#' + Number(datapts[index][j].qAttrExps.qValues[0].qNum).toString(16).substring(2);
+                        } else {
+                            colorVal    = '';
+                        }
+                        tempDataArr['meas_' + (j-numOfDims)+'_color'] = colorVal;
+
+console.log('inner attrExp', tempDataArr['meas_' + (j-numOfDims)+'_color']);
+
+                    };
                 };
+
             };
+console.log('full datapoint',datapts[index]);
             data.push(tempDataArr);
         };
 

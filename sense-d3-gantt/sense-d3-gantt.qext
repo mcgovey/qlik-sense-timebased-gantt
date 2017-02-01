@@ -1,13 +1,13 @@
 {
 	"name": "sense-d3-gantt",
-	"description": "Table visualization template based on angular.js",
+	"description": "Time-based D3 Gantt Extension",
 	"icon": "table",
 	"type": "visualization",
 	"version": "1.0.0",
-	"author": "",
+	"author": "mcgovey",
 	"homepage": "",
 	"keywords": "qlik-sense, visualization",
-	"license": "",
+	"license": "mit",
 	"repository": "",
 	"dependencies": {
 		"qlik-sense": ">=3.0.x"
