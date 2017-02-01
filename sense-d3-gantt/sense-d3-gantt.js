@@ -1,5 +1,7 @@
 define( ["qlik"
 		,"jquery"
+		,"./assets/js/properties"
+		,"./assets/js/colorPalettes"
 		, "text!./style.css"
 		, "text!./template.html"
 		,'//d3js.org/d3.v4.min.js'
@@ -8,7 +10,7 @@ define( ["qlik"
 		,'./bower_components/QlikSenseD3Utils/senseD3utils'
 		// ,'https://d3js.org/d3-scale-chromatic.v1.min.js'
 		], 
-	function (qlik, $, cssContent, template, d3, localRequire, moment) {
+	function (qlik, $, props, colorPalette, cssContent, template, d3, localRequire, moment) {
 
 	// 'use strict';
     $("<style>").html(cssContent).appendTo("head");
@@ -242,7 +244,20 @@ function displayExperience( data, api ) {
   resizeChart( data );
 
 }
-
+// var palette = [
+// 	"#b0afae",
+// 	"#7b7a78",
+// 	"#545352",
+// 	"#4477aa",
+// 	"#7db8da",
+// 	"#b6d7ea",
+// 	"#46c646",
+// 	"#f93f17",
+// 	"#ffcf02",
+// 	"#276e27",
+// 	"#ffffff",
+// 	"#000000"
+// ];
 
 	return {
        template: template,
@@ -256,64 +271,73 @@ function displayExperience( data, api ) {
 				}]
 			}
 		},
-		definition : {
-			type : "items",
-			component : "accordion",
-			items : {
-				dimensions : {
-					uses : "dimensions",
-					min : 1
-				},
-				measures : {
-					uses : "measures",
-					min : 1,
-					max : 1,
-					items: {
-						colorType: {
-							ref: "qDef.colorType",
-							label: "Color Format",
-							type: "string",
-							component: "dropdown",
-							options: 
-								[{
-									value: "stdNoStatus",
-									label: "No Status Indicator"
-								}, 
-								{
-									value: "useStatus",
-									label: "Status Indicator"
-								}]
-						},
-						color: {
-							ref: "qAttributeExpressions.0.qExpression",
-							label: "Status Colors",
-							type: "string",
-							expression: "optional",
-							defaultValue: "",
-							show: function(data) {
-// console.log('show info', data);
-							return data.qDef.colorType == "useStatus";
-							}
-						}//test expression: if(WildMatch([Project Name],'*tableau*'),'test4','text1')
-					}
-				},
-				//MAX(IF([Project Start Date]<>'NA',[Project End Date]-[Project Start Date],0))
-				sorting : {
-					uses : "sorting"
-				},
-				settings : {
-					uses : "settings",
-					items : {
-						initFetchRows : {
-							ref : "qHyperCubeDef.qInitialDataFetch.0.qHeight",
-							label : "Initial fetch rows",
-							type : "number",
-							defaultValue : 50
-						}
-					}
-				}
-			}
-		},
+		definition : props,
+		// definition : {
+		// 	type : "items",
+		// 	component : "accordion",
+		// 	items : {
+		// 		dimensions : {
+		// 			uses : "dimensions",
+		// 			min : 1
+		// 		},
+		// 		measures : {
+		// 			uses : "measures",
+		// 			min : 1,
+		// 			max : 1,
+		// 			items: {
+		// 				colorType: {
+		// 					ref: "qDef.colorType",
+		// 					label: "Color Format",
+		// 					type: "string",
+		// 					component: "dropdown",
+		// 					options: 
+		// 						[{
+		// 							value: "singleColor",
+		// 							label: "Single Color"
+		// 						}, 
+		// 						{
+		// 							value: "useStatus",
+		// 							label: "Color by Expression"
+		// 						}]
+		// 				},
+		// 				color: {
+		// 					ref 		: "qAttributeExpressions.0.qExpression",
+		// 					label 		: "Status Colors",
+		// 					type 		: "string",
+		// 					expression 	: "optional",
+		// 					defaultValue: "",
+		// 					show		: function(data) {
+		// 						return data.qDef.colorType == "useStatus";
+		// 					}
+		// 				},
+		// 				singleColor: {
+		// 					ref 		: "qDef.singleColorVal",
+		// 					label 		: "Bar color",
+		// 					component 	: "color-picker",
+		// 					type 		: "integer",
+		// 					defaultValue: 3,
+		// 					show 		: function(data) {
+		// 						return data.qDef.colorType == "singleColor";
+		// 					}
+		// 				},
+		// 			}
+		// 		},
+		// 		sorting : {
+		// 			uses : "sorting"
+		// 		},
+		// 		settings : {
+		// 			uses : "settings",
+		// 			items : {
+		// 				initFetchRows : {
+		// 					ref : "qHyperCubeDef.qInitialDataFetch.0.qHeight",
+		// 					label : "Initial fetch rows",
+		// 					type : "number",
+		// 					defaultValue : 50
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+		// },
 		support : {
 			snapshot: true,
 			export: true,
@@ -359,24 +383,52 @@ function displayExperience( data, api ) {
 			let numOfDims 	= senseD3.findNumOfDims(layout),
 				ganttData	= senseD3.createJSONObj(layout, numOfDims);
 
-console.log('gantt data', ganttData);
+			let colorType		= layout.qHyperCube.qMeasureInfo[0].colorType,
+				//get the value selected in props and find the associated value in the palette array
+				singleColorVal 	= colorPalette.singlePalette[layout.qHyperCube.qMeasureInfo[0].singleColorVal],
+				// get scale selected from property
+				selectedScaleObj	= colorPalette.scales[layout.qHyperCube.qMeasureInfo[0].scaleColorVal],
+				// create an array of scale keys
+				selectedScaleKeys 	= Object.keys(selectedScaleObj),
+				// max scale
+				selectedScaleMax  	= (selectedScaleKeys.length+2),
+				// get the max if the values in the range are more than the values in the dropdown selected
+				selectedScale = selectedScaleObj[layout.qHyperCube.qMeasureInfo[0].numOfColorVals > selectedScaleMax ? selectedScaleMax : layout.qHyperCube.qMeasureInfo[0].numOfColorVals]
+				;
+
+// console.log('selected scale', selectedScale, 'keys', selectedScaleKeys, 'max', selectedScaleMax);
 
 			data = ganttData.map(function (inner_d) {
+				let dynamicColorVals;
+				// set the color variable based on properties
+				if (colorType=='singleColor') {
+					dynamicColorVals = singleColorVal;
+				} else if (colorType=='useStatus' && layout.qHyperCube.qMeasureInfo[0].colorCodeBool) {
+					//check type to see if rgb passed
+					dynamicColorVals = typeof(inner_d.meas_0_color)=='number' ? '#' + Number(inner_d.meas_0_color).toString(16).substring(2) : inner_d.meas_0_color;
+				} else if (colorType=='useStatus' && !layout.qHyperCube.qMeasureInfo[0].colorCodeBool) {
+					//use mod to repeat colors if scale is smaller than value shown
+					dynamicColorVals = selectedScale[inner_d.meas_0_color % selectedScale.length];
+				} else if (colorType=='colorByDim') {
+					//use mod to repeat colors if scale is smaller than value shown
+					dynamicColorVals = selectedScale[inner_d.id % selectedScale.length];
+				} else {
+					dynamicColorVals = '#000000';
+				}
 				// Create an array of objects with only the length, experience, company, and role type
 				var indivJob = {
 				  'Dim'			: inner_d.dim_0,
 				  'ID'			: inner_d.id,
 				  'TimeStart'	: moment(inner_d.dim_1, "M/D/YYYY"),
 				  'TimeEnd'		: moment(inner_d.dim_1, "M/D/YYYY").add(+inner_d.meas_0, 'days'),
-				  'Color'		: inner_d.meas_0_color
+				  'Color'		: dynamicColorVals
 				}
 				return indivJob;
 			});
-
-// console.log('data struc', layout.qHyperCube.qDataPages[0].qMatrix);
+// console.log('data struc', layout);
 
 			app_this.$scope.data = data;
-console.log('cleaned data', data);
+// console.log('cleaned data', data);
 
 
 //=======================================================================================
@@ -387,7 +439,7 @@ console.log('cleaned data', data);
 			app_this.selections = barSelector( app_this.selections, this.backendApi );
 
 //=======================================================================================
-//Delete this section after above is raring to go! setup scope.table
+//Delete this section after above is raring to go!
 //=======================================================================================
 			if ( !app_this.$scope.table ) {
 				app_this.$scope.table = qlik.table( this );

@@ -192,14 +192,14 @@ var senseD3 = {
                             // get the value if it is a string
                             colorVal    = datapts[index][j].qAttrExps.qValues[0].qText;
                         } else if (datapts[index][j].qAttrExps.qValues[0].qNum){
-                            // if a number is contained in the expression - convert to hex
-                            colorVal    = '#' + Number(datapts[index][j].qAttrExps.qValues[0].qNum).toString(16).substring(2);
+                            // pass the number and worry about the conversion of the code on the other side
+                            colorVal    = datapts[index][j].qAttrExps.qValues[0].qNum;
                         } else {
                             colorVal    = '';
                         }
                         tempDataArr['meas_' + (j-numOfDims)+'_color'] = colorVal;
 
-console.log('inner attrExp', tempDataArr['meas_' + (j-numOfDims)+'_color']);
+// console.log('inner attrExp', tempDataArr['meas_' + (j-numOfDims)+'_color']);
 
                     };
                 };
