@@ -235,15 +235,15 @@ define( [], function () {
 					uses : "sorting"
 				},
 				settings : {
-					uses : "settings",
-					items : {
-						initFetchRows : {
-							ref : "qHyperCubeDef.qInitialDataFetch.0.qHeight",
-							label : "Initial fetch rows",
-							type : "number",
-							defaultValue : 50
-						}
-					}
+					uses : "settings"
+					// ,items : {
+					// 	initFetchRows : {
+					// 		ref : "qHyperCubeDef.qInitialDataFetch.0.qHeight",
+					// 		label : "Initial fetch rows",
+					// 		type : "number",
+					// 		defaultValue : 50
+					// 	}
+					// }
 				}
 			}
 		}

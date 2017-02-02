@@ -1,16 +1,3 @@
 <div qv-extension style="height: 100%; position: relative; overflow: auto;">
-	<div style="height: 100%;" id="gantt"></div>
-<!-- 	<table>
-		<thead>
-		<tr>
-			<th ng-repeat="head in table.headers track by $index" qva-activate="head.orderBy()">{{head.qFallbackTitle}}</th>
-		</tr>
-		</thead>
-		<tbody>
-		<tr ng-repeat="row in table.rows track by $index">
-			<td ng-repeat="cell in row.cells track by $index" class="selectable" ng-class="{'selected':cell.selected,'numeric':cell.qNum}" qva-activate="cell.select($event)">{{cell.qText}}</td>
-		</tr>
-		</tbody>
-	</table>
-	<button ng-if="table.rowCount>table.rows.length" qva-activate="table.getMoreData()" class="lui-button more">More...</button> -->
+	<div style="height: 100%;" ng-attr-id="{{ 'gantt_' + id }}"></div>
 </div>

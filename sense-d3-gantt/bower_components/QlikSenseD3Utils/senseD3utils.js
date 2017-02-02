@@ -187,25 +187,23 @@ var senseD3 = {
 
                     //store attribute expressions
                     if (datapts[index][j].qAttrExps) {
-                        let colorVal;
-                        if (datapts[index][j].qAttrExps.qValues[0].qText) {
-                            // get the value if it is a string
-                            colorVal    = datapts[index][j].qAttrExps.qValues[0].qText;
-                        } else if (datapts[index][j].qAttrExps.qValues[0].qNum){
-                            // pass the number and worry about the conversion of the code on the other side
-                            colorVal    = datapts[index][j].qAttrExps.qValues[0].qNum;
-                        } else {
-                            colorVal    = '';
+                        for (var i = 0; i < datapts[index][j].qAttrExps.qValues.length; i++) {
+                            let attrVal;
+                            if (datapts[index][j].qAttrExps.qValues[i].qText) {
+                                // get the value if it is a string
+                                attrVal    = datapts[index][j].qAttrExps.qValues[i].qText;
+                            } else if (datapts[index][j].qAttrExps.qValues[i].qNum){
+                                // pass the number and worry about the conversion of the code on the other side
+                                attrVal    = datapts[index][j].qAttrExps.qValues[i].qNum;
+                            } else {
+                                attrVal    = '';
+                            }
+                            tempDataArr['meas_' + (j-numOfDims)+'_attr_' + i] = attrVal;
                         }
-                        tempDataArr['meas_' + (j-numOfDims)+'_color'] = colorVal;
-
-// console.log('inner attrExp', tempDataArr['meas_' + (j-numOfDims)+'_color']);
-
                     };
                 };
 
             };
-console.log('full datapoint',datapts[index]);
             data.push(tempDataArr);
         };
 

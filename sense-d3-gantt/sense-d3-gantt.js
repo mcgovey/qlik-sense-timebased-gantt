@@ -33,18 +33,21 @@ function createYScale( data, height ) {
 // Create yScale component ///////////////////
 //////////////////////////////////////////////
 	let yScale 	= d3.scaleBand().rangeRound([0, height])
-					.domain(data.map(function (d) { return d.Dim; }));
+					.domain(data.map(function (d) { return d.Dim; }))
+					.round(true)
+					.padding(.1)
+					;
 
 	return yScale;
 }
 
-function resizeChart( data ) {
+function resizeChart( data, chartID ) {
 //////////////////////////////////////////////
 // Draw key size-based element ///////////////
 //////////////////////////////////////////////
 
 	//create selector vars
-	let chart 		= d3.select("div#gantt"),
+	let chart 		= d3.select('div#gantt_' + chartID),
 		svg 		= chart.select('svg'),
 		artboard 	= svg.select('g.axisBoard'),
 		bars		= svg.selectAll('g#bars > rect'),
@@ -82,16 +85,17 @@ function resizeChart( data ) {
 	xAxis.scale(xScale);
 
 	// draw the new xAxis
-	xAxisEl.call(xAxis);
+	xAxisEl.call(xAxis)
+		.transition()
+			.duration(1000)
+			.ease(d3.easeLinear)
+			.style("opacity",(width<=480 ? 0 : 1));
 
 	//Create bars
-	bars.attr("transform", "translate(" + margin.left + "," + (margin.top-30) + ")")
+	bars.attr("transform", "translate(" + margin.left + "," + (margin.top) + ")")
 		.transition()
 			.duration(200)
-//=====================================================================
-//Replace with dynamic bar size based on number of bars
-//=====================================================================
-     		.attr('height', (height * .115))
+     		.attr('height', yScale.bandwidth())
 			.attr("y", function(d) {
 				return yScale(d.Dim);
 			})
@@ -102,16 +106,14 @@ function resizeChart( data ) {
 			.attr("x", function (d) {
 			 	return xScale(d.TimeStart.toDate());
 			 })
+			.attr('rx', width*.01)
+			.attr('ry', width*.01)
 			.attr('width', function(d){
 				let taskDuration = moment(moment(d.TimeStart).diff(minDate));
 				let barLength = moment(d.TimeEnd.diff(taskDuration));
 				return xScale(barLength.toDate());
 			})
 		;
-
-	// yAxisEl.selectAll(".tick text")
-	//       // .call(wrap, (margin.left * 0.9))
-	//       ;
 
 	// change xAxis positioning
 	xAxisEl.attr("transform", "translate(0," + height + ")");
@@ -121,23 +123,26 @@ function resizeChart( data ) {
 		.transition()
 			.duration(1000)
 			.ease(d3.easeLinear)
-			.style("opacity",(width<=480 ? 0 : 1))
+			.style("opacity",(width<=480 ? 0 : 1));
+
+	yAxisEl.selectAll(".tick text")
+		.call(axisTextWrap, (margin.left * 0.9))
+		;
 
 }
 
-function barSelector( selections, api ) {
+function barSelector( selections, api, chartID ) {
 //////////////////////////////////////////////
 // Create bar selection component ////////////
 //////////////////////////////////////////////
 	//create selector vars
-	let chart 		= d3.select("div#gantt"),
+	let chart 		= d3.select('div#gantt_' + chartID),
 		svg 		= chart.select('svg'),
 		artboard 	= svg.select('g.axisBoard'),
 		bars		= svg.selectAll('g#bars > rect');
 
 	//add click event
 	bars.on("click",function (d) {
-console.log('clicked element', d, 'api', api);
 		// selections.selectedValue
 		api.selectValues(0, [d.ID], true);
     });
@@ -145,32 +150,26 @@ console.log('clicked element', d, 'api', api);
 	return selections;
 }
 
-function displayExperience( data, api ) {
+function displayExperience( data, chartID ) {
 
 	//////////////////////////////////////////////
 	// Chart Config /////////////////////////////
 	//////////////////////////////////////////////
-	let chart = d3.select("div#gantt");
+	let chart = d3.select('div#gantt_' + chartID)
+		.classed('container', true);
 
 	// Define the div for the tooltip
 	let tooltipDiv = chart.append("div") 
 	.attr("class", "tooltip")       
 	.style("opacity", 0);
 
-	// Set the dimensions of the canvas / graph
-	var margin      = {top: 30, right: 20, bottom: 30, left: 100},
-		width,      // width gets defined below
-		height      = 450 - margin.top - margin.bottom;
-
 	// Set the scales ranges
 	var xScale 	= createXScale( data ), //d3.scaleTime(),
-		yScale 		= d3.scaleBand().rangeRound([0, height]),
+		// yScale 		= d3.scaleBand().rangeRound([0, height]),
 		colorScale 	= d3.scaleSequential(d3.interpolatePuBuGn);
 
 	// Define the axes
 	var xAxis 	= d3.axisBottom().scale( xScale ),
-	yAxis 		= d3.axisLeft().scale( yScale )
-					.tickSizeOuter(0),
 	minDate 	= d3.min(data, function(d) { return d.TimeStart.toDate(); });
 
 	// Add the svg canvas
@@ -178,7 +177,6 @@ function displayExperience( data, api ) {
 		.append("svg");
 
  	// set the domain range for colors from the data
-	yScale.domain(data.map(function (d) { return d.Dim; }));
 	colorScale.domain([-1, d3.max(data, function(d, i) { return i; })]);
 
   // create element for where elements will be drawn
@@ -197,7 +195,7 @@ function displayExperience( data, api ) {
   //Create bars
   var bars = svg.append("g")
      .attr("id", "bars")
-     .attr("transform", "translate(0," + (margin.top+margin.bottom) + ")")
+     .attr("transform", "translate(0,0)")//," + (margin.top+margin.bottom) + ")")
      .selectAll("rect")
      .data( data )
      .enter()
@@ -205,13 +203,10 @@ function displayExperience( data, api ) {
      .attr("x", function (d) {
        return xScale(minDate);
      })
-     .attr("y", function(d) {
-       return yScale(d.Dim);
-     })
+     .attr('y', 0)
      .attr('width', 0)
-     .attr('height', (height * .115))
+     .attr('height', 0)
      .attr('fill', function (d, i) {
-      // colorScale(i)
        return d.Color;
      })
     .style("stroke", 'black')
@@ -221,43 +216,59 @@ function displayExperience( data, api ) {
     .on("mouseout", tooltipEnd)
     ;
 
+	 function tooltipStart(d, i, bars) {
+		let bar				= $(bars[i])
+			topBar 			= bar.offset().top,
+			divParent		= bar.closest('.container'),
+			topDivParent	= divParent.offset().top;
+		
+		// create transitions for tooltip
+		tooltipDiv.transition()
+		.duration(200)
+		.style("opacity", .9);
+		tooltipDiv .html( d.Dim+ " from " + d.TimeStart.format("MMM YYYY") + ' to ' + d.TimeEnd.format("MMM YYYY"))
+		.style("left", (d3.event.pageX) + "px")
+		.style("top", (topBar - topDivParent- 28) + "px");
 
+	 }
 
-  function tooltipStart(d) {
-    // create transitions for tooltip
-    tooltipDiv.transition()
-      .duration(200)
-      .style("opacity", .9);
-    tooltipDiv .html( d.Dim+ " from " + d.TimeStart.format("MMM YYYY") + ' to ' + d.TimeEnd.format("MMM YYYY"))
-      .style("left", (d3.event.pageX) + "px")
-      .style("top", (d3.event.pageY - 28) + "px");
-  }
+	function tooltipEnd(d) {
+		//hide tooltip
+		tooltipDiv.transition()
+			.duration(500)
+			.style("opacity", 0);
+	}
 
-  function tooltipEnd(d) {
-    //hide tooltip
-    tooltipDiv.transition()
-      .duration(500)
-      .style("opacity", 0);
-  }
-
-  // call function to call components based on size
-  resizeChart( data );
+	// call function to call components based on size
+	resizeChart( data, chartID );
 
 }
-// var palette = [
-// 	"#b0afae",
-// 	"#7b7a78",
-// 	"#545352",
-// 	"#4477aa",
-// 	"#7db8da",
-// 	"#b6d7ea",
-// 	"#46c646",
-// 	"#f93f17",
-// 	"#ffcf02",
-// 	"#276e27",
-// 	"#ffffff",
-// 	"#000000"
-// ];
+
+//function to wrap text for axis
+function axisTextWrap(text, width) {
+  text.each(function() {
+    var text = d3.select(this),
+        words = text.text().split(/\s+/).reverse(),
+        word,
+        line = [],
+        lineNumber = 0,
+        lineHeight = 1.1, // ems
+        y = text.attr("y"),
+        dy = parseFloat(text.attr("dy")),
+        tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
+    while (word = words.pop()) {
+      line.push(word);
+      tspan.text(line.join(" "));
+      if (tspan.node().getComputedTextLength() > width) {
+        line.pop();
+        tspan.text(line.join(" "));
+        line = [word];
+        tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+      }
+    }
+  });
+}
+
 
 	return {
        template: template,
@@ -272,88 +283,24 @@ function displayExperience( data, api ) {
 			}
 		},
 		definition : props,
-		// definition : {
-		// 	type : "items",
-		// 	component : "accordion",
-		// 	items : {
-		// 		dimensions : {
-		// 			uses : "dimensions",
-		// 			min : 1
-		// 		},
-		// 		measures : {
-		// 			uses : "measures",
-		// 			min : 1,
-		// 			max : 1,
-		// 			items: {
-		// 				colorType: {
-		// 					ref: "qDef.colorType",
-		// 					label: "Color Format",
-		// 					type: "string",
-		// 					component: "dropdown",
-		// 					options: 
-		// 						[{
-		// 							value: "singleColor",
-		// 							label: "Single Color"
-		// 						}, 
-		// 						{
-		// 							value: "useStatus",
-		// 							label: "Color by Expression"
-		// 						}]
-		// 				},
-		// 				color: {
-		// 					ref 		: "qAttributeExpressions.0.qExpression",
-		// 					label 		: "Status Colors",
-		// 					type 		: "string",
-		// 					expression 	: "optional",
-		// 					defaultValue: "",
-		// 					show		: function(data) {
-		// 						return data.qDef.colorType == "useStatus";
-		// 					}
-		// 				},
-		// 				singleColor: {
-		// 					ref 		: "qDef.singleColorVal",
-		// 					label 		: "Bar color",
-		// 					component 	: "color-picker",
-		// 					type 		: "integer",
-		// 					defaultValue: 3,
-		// 					show 		: function(data) {
-		// 						return data.qDef.colorType == "singleColor";
-		// 					}
-		// 				},
-		// 			}
-		// 		},
-		// 		sorting : {
-		// 			uses : "sorting"
-		// 		},
-		// 		settings : {
-		// 			uses : "settings",
-		// 			items : {
-		// 				initFetchRows : {
-		// 					ref : "qHyperCubeDef.qInitialDataFetch.0.qHeight",
-		// 					label : "Initial fetch rows",
-		// 					type : "number",
-		// 					defaultValue : 50
-		// 				}
-		// 			}
-		// 		}
-		// 	}
-		// },
 		support : {
 			snapshot: true,
 			export: true,
 			exportData : true
 		},
-		resize: function (layout) {
-			let data = this.$scope.data;
+		resize: function ($element, layout) {
+			let data = this.$scope.data,
+				chartID = layout.qInfo.qId;
 
-			resizeChart( data );
+			resizeChart( data, chartID );
 		},
 		paint: function ( $element, layout ) {
 
 			app_this = this;
+			let chartID = layout.qInfo.qId;
 
 			// set layout variable to create id used to set the div id
-			app_this.$scope.id= layout.qInfo.qId;
+			app_this.$scope.id= chartID;
 
 			// set layout variables for panel display show/hide
 			app_this.$scope.$watch("layout", function (newVal, oldVal) {
@@ -375,10 +322,7 @@ function displayExperience( data, api ) {
 			if(app_this.painted) return;  
 			app_this.painted = true;
 
-//=======================================================================================
-//Reference chart by ID
-//=======================================================================================
-			$('div#gantt').empty();
+			$('div#gantt_' + chartID).empty();
 
 			let numOfDims 	= senseD3.findNumOfDims(layout),
 				ganttData	= senseD3.createJSONObj(layout, numOfDims);
@@ -396,8 +340,6 @@ function displayExperience( data, api ) {
 				selectedScale = selectedScaleObj[layout.qHyperCube.qMeasureInfo[0].numOfColorVals > selectedScaleMax ? selectedScaleMax : layout.qHyperCube.qMeasureInfo[0].numOfColorVals]
 				;
 
-// console.log('selected scale', selectedScale, 'keys', selectedScaleKeys, 'max', selectedScaleMax);
-
 			data = ganttData.map(function (inner_d) {
 				let dynamicColorVals;
 				// set the color variable based on properties
@@ -405,48 +347,33 @@ function displayExperience( data, api ) {
 					dynamicColorVals = singleColorVal;
 				} else if (colorType=='useStatus' && layout.qHyperCube.qMeasureInfo[0].colorCodeBool) {
 					//check type to see if rgb passed
-					dynamicColorVals = typeof(inner_d.meas_0_color)=='number' ? '#' + Number(inner_d.meas_0_color).toString(16).substring(2) : inner_d.meas_0_color;
+					dynamicColorVals = typeof(inner_d.meas_0_attr_0)=='number' ? '#' + Number(inner_d.meas_0_attr_0).toString(16).substring(2) : inner_d.meas_0_attr_0;
 				} else if (colorType=='useStatus' && !layout.qHyperCube.qMeasureInfo[0].colorCodeBool) {
 					//use mod to repeat colors if scale is smaller than value shown
-					dynamicColorVals = selectedScale[inner_d.meas_0_color % selectedScale.length];
+					dynamicColorVals = selectedScale[inner_d.meas_0_attr_0 % selectedScale.length];
 				} else if (colorType=='colorByDim') {
 					//use mod to repeat colors if scale is smaller than value shown
 					dynamicColorVals = selectedScale[inner_d.id % selectedScale.length];
 				} else {
 					dynamicColorVals = '#000000';
 				};
+
 				// Create an array of objects with only the dimension, id, start, end, and color
 				var indivJob = {
 				  'Dim'			: inner_d.dim_0 || 'N/A',
 				  'ID'			: inner_d.id || 0,
-				  'TimeStart'	: inner_d.dim_1 ? moment(inner_d.dim_1, "M/D/YYYY") : moment(),
-				  'TimeEnd'		: inner_d.dim_1 ? moment(inner_d.dim_1, "M/D/YYYY").add(+inner_d.meas_0, 'days') : moment().add(1,'w'),
+				  'TimeStart'	: inner_d.dim_1 && inner_d.dim_1!='NA' ? moment(inner_d.dim_1, "M/D/YYYY") : moment(),
+				  'TimeEnd'		: inner_d.dim_1 && inner_d.dim_1!='NA' ? moment(inner_d.dim_1, "M/D/YYYY").add(+inner_d.meas_0, 'days') : moment().add(1,'w'),
 				  'Color'		: dynamicColorVals
 				};
 				return indivJob;
 			});
-// console.log('data struc', layout);
 
 			app_this.$scope.data = data;
-console.log('cleaned data', data);
 
+			displayExperience( data, chartID );
 
-//=======================================================================================
-// will eventually want to pass div id for selector as well
-//=======================================================================================
-			displayExperience( data );
-
-			app_this.selections = barSelector( app_this.selections, this.backendApi );
-
-//=======================================================================================
-//Delete this section after above is raring to go!
-//=======================================================================================
-			if ( !app_this.$scope.table ) {
-				app_this.$scope.table = qlik.table( this );
-			}
-
-// console.log('table cleaner', senseD3.createJSONObj( app_this.$scope.table ));
-console.log('$scope', app_this.$scope);
+			app_this.selections = barSelector( app_this.selections, this.backendApi, chartID );
 
 			return qlik.Promise.resolve();
 		},
