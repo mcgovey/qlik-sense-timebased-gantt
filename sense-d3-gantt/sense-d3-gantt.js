@@ -217,10 +217,10 @@ define( ["qlik"
 			.data( data )
 			.enter()
 			.append("rect")
+			.attr("class", "selectable")
 			.attr('data-value', function (d) {
 				return d.ID;
 			})
-			.classed('selectable', true)
 			.attr('x', function (d) {
 				return xScale(minDate);
 			})
@@ -318,7 +318,7 @@ define( ["qlik"
 			resizeChart( data, chartID );
 		},
 		paint: function ( $element, layout ) {
-console.log('layout', layout);
+// console.log('layout', layout);
 			let app_this = this;
 			let chartID = layout.qInfo.qId;
 
@@ -348,9 +348,9 @@ console.log('layout', layout);
 			$('div#gantt_' + chartID).empty();
 
 			let numOfDims 	= senseD3.findNumOfDims(layout),
-				ganttData	= senseD3.createJSONObj(layout, numOfDims);
+				ganttData	= senseD3.createJSONObj(layout);
 
-console.log('ganttData',ganttData);
+// console.log('ganttData',ganttData);
 
 			let colorType		= layout.qHyperCube.qMeasureInfo[0].colorType,
 				//get the value selected in props and find the associated value in the palette array
@@ -406,22 +406,29 @@ console.log('ganttData',ganttData);
 			app_this.$scope.data = data;
 
 			displayExperience( data, chartID );
-
-			let self = this.backendApi;
-			// app_this.selections = barSelector( app_this.selections, this.backendApi, chartID );
-console.log('el', $element, 'this', this, 'selections', this.selectionsEnabled, 'mode', layout.selectionMode);
+			
+			// build selection model - utlizing the confirm selection model
 			if(this.selectionsEnabled && layout.selectionMode !== "NO") {
-				$element.find('g#bars > rect').on('qv-activate', function() {
+				$element.find('.selectable').on('qv-activate', function() {
 					if(this.hasAttribute("data-value")) {
 						var value = parseInt(this.getAttribute("data-value"), 10), dim = 0;
+
 						if(layout.selectionMode === "CONFIRM") {
-							self.selectValues(dim, [value], true);
-							$(this).toggleClass("selected");
+							app_this.$scope.selectValues(dim, [value], true);
+
+							//set classes for selectable/selected depending on what was already set
+							if ($(this).attr("class").indexOf("selected") > -1) {
+								var selClass = $(this).attr("class");
+								$(this).attr("class", selClass.replace("selected", "selectable"));
+							} else {
+								$(this).attr("class", "selected");
+							}
 						} else {
-							self.selectValues(dim, [value], true);
+							app_this.$scope.backendApi.selectValues(dim, [value], true);
 						}
 					}
 				});
+				$element.find('.selectable').toggleClass('active');
 			}
 
 			return qlik.Promise.resolve();

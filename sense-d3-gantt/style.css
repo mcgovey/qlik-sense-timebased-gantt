@@ -36,3 +36,10 @@
 g#bars:hover {
 	cursor: pointer;
 }
+
+.qv-object-sense-d3-gantt .selected {
+	opacity: 1;
+}
+.qv-object-sense-d3-gantt .selectable.active {
+	opacity: 0.3;
+}
