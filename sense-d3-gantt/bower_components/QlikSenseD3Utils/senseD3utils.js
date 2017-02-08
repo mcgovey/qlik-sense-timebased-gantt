@@ -189,7 +189,7 @@ var senseD3 = {
                     //store attribute expressions
                     if (datapts[index][j].qAttrExps) {
                         for (var i = 0; i < datapts[index][j].qAttrExps.qValues.length; i++) {
-                            let attrVal;
+                            var attrVal;
                             if (datapts[index][j].qAttrExps.qValues[i].qText) {
                                 // get the value if it is a string
                                 attrVal    = datapts[index][j].qAttrExps.qValues[i].qText;
