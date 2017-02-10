@@ -80,6 +80,8 @@ console.log('updated domain',d3.min(data, function(d) { return d.TimeStart.toDat
 	                      .tickSize(5),
 	        numOfPts	= d3.max(data, function(d, i) { return i; })+1;			
 
+console.log('data return', data);
+
 		let bars = svg.selectAll('g#bars > rect')
 						.data(data);
 
@@ -102,7 +104,7 @@ console.log('updated domain',d3.min(data, function(d) { return d.TimeStart.toDat
 				return d.Color;
 			})
 			;
-console.log('bars',bars);
+// console.log('bars',bars);
 		//Update…
 		bars.transition()
 			.duration(1000)
@@ -115,7 +117,7 @@ console.log('bars',bars);
 			.attr('width', function(d){
 				let taskDuration = moment(moment(d.TimeStart).diff(minDate));
 				let barLength = moment(d.TimeEnd.diff(taskDuration));
-console.log('bar width', xScale(barLength.toDate()), 'barLength', barLength,'duration', moment(moment(d.TimeStart).diff(minDate)));
+console.log('start', d.TimeStart, 'mindate',minDate, 'enddate',d.TimeEnd, 'bar width', xScale(barLength.toDate()), 'barLength', barLength,'duration', taskDuration);
 				return xScale(barLength.toDate());
 			})
 			.attr('fill', function (d, i) {
@@ -129,7 +131,7 @@ console.log('bar width', xScale(barLength.toDate()), 'barLength', barLength,'dur
 			.duration(1000)
 			.attr("y", height)
 			.remove();
-console.log('bars exit',bars);
+// console.log('bars exit',bars);
 	}
 	function getSizeFields( selectors ) {
 		// create dynamic sizing
@@ -155,7 +157,7 @@ console.log('bars exit',bars);
 			var selectors = {
 				'chart' 	: d3.select('div#gantt_' + chartID)
 			};
-			selectors['svg'] = chart.select('svg'),
+			selectors['svg'] = selectors.chart.select('svg'),
 			selectors['artboard'] = selectors['svg'].select('g.axisBoard'),
 			selectors['bars'] 	= selectors['svg'].selectAll('g#bars > rect'),
 			selectors['xAxisEl'] = selectors['artboard'].select('g.xAxis.gantt'),
@@ -170,23 +172,23 @@ console.log('bars exit',bars);
 			xAxisEl		= artboard.select('g.xAxis.gantt'),
 			yAxisEl		= artboard.select('g.yAxis.gantt');
 
-		// create dynamic sizing
-		let	divWidth 		= parseInt(selectors.chart.style('width'), 10),
-			divHeight		= parseInt(selectors.chart.style('height'), 10),
-			marginRight		= 20,
-			marginBottom	= 30,
-			// marginLeft 		= divWidth <= 480 ? 0 : 100,
-			marginTop 		= selectors.divWidth <= 480 ? 0 : 30,
-			height 			= divHeight - marginTop - marginBottom;
-			
-console.log('selectors', selectors.divWidth, 'divWidth', divWidth);
+		// // create dynamic sizing
+		// let	divWidth 		= parseInt(selectors.chart.style('width'), 10),
+		// 	divHeight		= parseInt(selectors.chart.style('height'), 10),
+		// 	marginRight		= 20,
+		// 	marginBottom	= 30,
+		// 	// marginLeft 		= divWidth <= 480 ? 0 : 100,
+		// 	marginTop 		= divWidth <= 480 ? 0 : 30,
+		// 	height 			= divHeight - marginTop - marginBottom;
+
+console.log('selectors', selectors);
 
 		let sizeFields = getSizeFields( selectors );
-console.log('sizeFields',sizeFields);
+// console.log('sizeFields',sizeFields);
 
 		// set data related vars
 		let xScale 		= createXScale( data ),
-			yScale 		= createYScale( data, height ),
+			yScale 		= createYScale( data, sizeFields.height ),
 			minDate		= d3.min(data, function(d) { return d.TimeStart.toDate(); }),
 			xAxis       = d3.axisBottom().scale( xScale ),
 			yAxis       = d3.axisLeft().scale( yScale )
@@ -214,16 +216,16 @@ console.log('sizeFields',sizeFields);
 		// yAxisG.attr("transform", "translate(-10,0)");
 
 		// check if axis height can fit in canvas
-		let hideAxis 	= (height < yAxisHeight) || (selectors.divWidth<=480),
+		let hideAxis 	= (sizeFields.height < yAxisHeight) || (sizeFields.divWidth<=480),
 			marginLeft 	= hideAxis ? 0 : 100,
-			width 		= selectors.divWidth - marginLeft - marginRight;
+			width 		= sizeFields.divWidth - marginLeft - sizeFields.marginRight;
 
 		// translate g inside svg for axis container
-		artboard.attr("transform", "translate(" + marginLeft + "," + marginTop + ")")
+		artboard.attr("transform", "translate(" + marginLeft + "," + sizeFields.marginTop + ")")
 
 		// set the svg dimensions
-		svg.attr("width", selectors.divWidth - 5)
-			.attr("height", divHeight - 5);
+		svg.attr("width", sizeFields.divWidth - 5)
+			.attr("height", sizeFields.divHeight - 5);
 
 		// Set new range for xScale
 		xScale.range([0, width]);
@@ -236,10 +238,10 @@ console.log('sizeFields',sizeFields);
 			.transition()
 				.duration(1000)
 				.ease(d3.easeLinear)
-				.style("opacity",(selectors.divWidth<=480 ? 0 : 1));
+				.style("opacity",(sizeFields.divWidth<=480 ? 0 : 1));
 
 		//Create bars
-		bars.attr("transform", "translate(" + marginLeft + "," + (marginTop) + ")")
+		bars.attr("transform", "translate(" + marginLeft + "," + (sizeFields.marginTop) + ")")
 			.transition()
 				.duration(200)
 	     		.attr('height', yScale.bandwidth())
@@ -263,7 +265,7 @@ console.log('sizeFields',sizeFields);
 			;
 
 		// change xAxis positioning
-		xAxisEl.attr("transform", "translate(0," + height + ")");
+		xAxisEl.attr("transform", "translate(0," + sizeFields.height + ")");
 
 		//change yaxis and hide if width below "small" screen size breakpoint
 		yAxisEl.transition()
@@ -477,11 +479,13 @@ console.log('sizeFields',sizeFields);
 			  'TimeEnd'		: moment(inner_d.dim_1, "M/D/YYYY").add(+inner_d.meas_0, 'days'),
 			  'goodData'	: goodData,
 			  'Color'		: dynamicColorVals
-			};
+			}
 			return indivJob;
 		});
 
 		data = data.filter(function(d) { return d.goodData; });
+
+console.log('data', data);
 
 		return data;
 	}
