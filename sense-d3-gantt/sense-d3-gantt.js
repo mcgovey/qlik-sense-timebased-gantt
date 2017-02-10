@@ -69,20 +69,28 @@ define( ["qlik"
 			minDate		= d3.min(data, function(d) { return d.TimeStart.toDate(); }),
 			xAxis       = d3.axisBottom().scale( xScale ),
 			yAxis       = d3.axisLeft().scale( yScale )
-	                      .tickSizeOuter(0),
+	                      .tickSize(5),
 	        numOfPts	= d3.max(data, function(d, i) { return i; })+1;
 
 	   var transitionDuration = (numOfPts<5 ? 2500 : 5000)/numOfPts;
 
 		//change yaxis and hide if width below "small" screen size breakpoint
 		yAxisEl.call(yAxis);
+// console.log('axis', yAxis, 'el', yAxisEl);
+
+		yAxisEl.selectAll(".tick text")
+			.call(axisTextWrap, (90))
+			;
 
 		//get the total axis height
-		let yAxisText = $('.qv-object-sense-d3-gantt .yAxis.gantt g.tick text');
+		let yAxisText = $('.qv-object-sense-d3-gantt .yAxis.gantt g.tick text'),
+			yAxisG = $('.qv-object-sense-d3-gantt .yAxis.gantt g.tick');
 		var yAxisHeight = 0;
 		yAxisText.each(function (index) {
 			yAxisHeight += parseInt($(this)[0].getBoundingClientRect().height, 10);
 		});
+
+		// yAxisG.attr("transform", "translate(-10,0)");
 
 		// check if axis height can fit in canvas
 		let hideAxis 	= (height < yAxisHeight) || (divWidth<=480),
@@ -124,8 +132,8 @@ define( ["qlik"
 				.attr("x", function (d) {
 				 	return xScale(d.TimeStart.toDate());
 				 })
-				.attr('rx', width*.01)
-				.attr('ry', width*.01)
+				.attr('rx', width*.001)
+				.attr('ry', width*.001)//used for curved bars
 				.attr('width', function(d){
 					let taskDuration = moment(moment(d.TimeStart).diff(minDate));
 					let barLength = moment(d.TimeEnd.diff(taskDuration));
@@ -142,9 +150,7 @@ define( ["qlik"
 				.ease(d3.easeLinear)
 				.style("opacity",(hideAxis ? 0 : 1));
 
-		yAxisEl.selectAll(".tick text")
-			.call(axisTextWrap, (marginLeft * 0.9))
-			;
+
 
 	}
 
@@ -277,7 +283,7 @@ define( ["qlik"
 	        lineHeight = 1.1, // ems
 	        y = text.attr("y"),
 	        dy = parseFloat(text.attr("dy")),
-	        tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
+	        tspan = text.text(null).append("tspan").attr("x", -5).attr("y", y).attr("dy", dy + "em");
 	    while (word = words.pop()) {
 	      line.push(word);
 	      tspan.text(line.join(" "));
@@ -285,7 +291,7 @@ define( ["qlik"
 	        line.pop();
 	        tspan.text(line.join(" "));
 	        line = [word];
-	        tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+	        tspan = text.append("tspan").attr("x", -5).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
 	      }
 	    }
 	  });
@@ -325,25 +331,25 @@ define( ["qlik"
 			// set layout variable to create id used to set the div id
 			app_this.$scope.id= chartID;
 
-			// set layout variables for panel display show/hide
-			app_this.$scope.$watch("layout", function (newVal, oldVal) {
-				// let calcCondition = ((layout.properties.mapData.calculationConditionToggle==true && layout.properties.mapData.calculationCondition==-1) || layout.properties.mapData.calculationConditionToggle!=true) ? -1 : 0,
-				// 	calcConditionMsg = (layout.properties.mapData.calculationConditionMessage === "" || layout.properties.mapData.calculationConditionMessage === null)? "Calculation condition unfulfilled" : layout.properties.mapData.calculationConditionMessage;
+			// // set layout variables for panel display show/hide
+			// app_this.$scope.$watch("layout", function (newVal, oldVal) {
+			// 	// let calcCondition = ((layout.properties.mapData.calculationConditionToggle==true && layout.properties.mapData.calculationCondition==-1) || layout.properties.mapData.calculationConditionToggle!=true) ? -1 : 0,
+			// 	// 	calcConditionMsg = (layout.properties.mapData.calculationConditionMessage === "" || layout.properties.mapData.calculationConditionMessage === null)? "Calculation condition unfulfilled" : layout.properties.mapData.calculationConditionMessage;
 
-				// app_this.$scope.vars = {
-				// 	panelDisplay		: layout.properties.p2pConfig.drivingModeConfig.mapPanelBool,
-				// 	calcCondition 		: calcCondition,
-				// 	calcConditionStmt	: calcConditionMsg
-				// };
+			// 	// app_this.$scope.vars = {
+			// 	// 	panelDisplay		: layout.properties.p2pConfig.drivingModeConfig.mapPanelBool,
+			// 	// 	calcCondition 		: calcCondition,
+			// 	// 	calcConditionStmt	: calcConditionMsg
+			// 	// };
 
-				//set flag to re-render below anytime preferences are changed
-				app_this.painted = false;
+			// 	//set flag to re-render below anytime preferences are changed
+			// 	app_this.painted = false;
 
-			});
+			// });
 
-			//control initialization to only paint once
-			if(app_this.painted) return;  
-			app_this.painted = true;
+			// //control initialization to only paint once
+			// if(app_this.painted) return;  
+			// app_this.painted = true;
 
 			$('div#gantt_' + chartID).empty();
 

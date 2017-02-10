@@ -1,5 +1,6 @@
 .qv-object-sense-d3-gantt div.qv-object-content-container {
 	overflow: auto;
+	font-family: 'QlikView Sans', sans-serif;
 }
 .qv-object-sense-d3-gantt td,
 .qv-object-sense-d3-gantt th {
@@ -24,13 +25,15 @@
 	text-align    : center;
 	width         : 150px;
 	padding       : 2px;
-	font          : 12px sans-serif;
+	font-size     : 12px;
 	background    : lightgrey;
 	border        : 0px;
 	border-radius : 8px;
 	pointer-events: none;
 }
-.qv-object-sense-d3-gantt .yAxis.gantt line {
+.qv-object-sense-d3-gantt .yAxis.gantt line,
+.qv-object-sense-d3-gantt .xAxis.gantt line
+{
 	display       : none;
 }
 g#bars:hover {
