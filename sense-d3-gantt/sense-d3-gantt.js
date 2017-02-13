@@ -36,10 +36,11 @@ define( ["qlik"
 	//////////////////////////////////////////////
 		let xScale 	= d3.scaleTime()
 						.domain([
-							d3.min(data, function(d) { return d.TimeStart.toDate(); }),
-							d3.max(data, function(d) { return d.TimeEnd.toDate(); })
-						]);
-console.log('updated domain',d3.min(data, function(d) { return d.TimeStart.toDate(); }),	d3.max(data, function(d) { return d.TimeEnd.toDate(); }));
+							d3.min(data, function(d) { return d.TimeStart; }),
+							d3.max(data, function(d) { return d.TimeEnd; })
+						])
+						;
+// console.log('updated domain',d3.min(data, function(d) { return d.TimeStart; }),	d3.max(data, function(d) { return d.TimeEnd; }));
 		return xScale;
 	}
 
@@ -74,56 +75,84 @@ console.log('updated domain',d3.min(data, function(d) { return d.TimeStart.toDat
 		// set data related vars
 		let xScale 		= createXScale( data ),
 			yScale 		= createYScale( data, height ),
-			minDate		= d3.min(data, function(d) { return d.TimeStart.toDate(); }),
+			minDate		= d3.min(data, function(d) { return d.TimeStart; }),
 			xAxis       = d3.axisBottom().scale( xScale ),
 			yAxis       = d3.axisLeft().scale( yScale )
 	                      .tickSize(5),
-	        numOfPts	= d3.max(data, function(d, i) { return i; })+1;			
+	        numOfPts	= d3.max(data, function(d, i) { return i; })+1;
+
+	 	let transitionDuration = (numOfPts<5 ? 2500 : 5000)/numOfPts;
 
 console.log('data return', data);
+		//get chart selectors
+		let selectors = getSelectors(chartID);
+		//get size fields
+		let sizeFields = getSizeFields( selectors );
+		//get width
+		let widthObj = getChartWidth(sizeFields);
 
-		let bars = svg.selectAll('g#bars > rect')
+
+		let bars = svg.select('g#bars').selectAll('rect')
 						.data(data);
+
+console.log('new school bars', bars);
+		// Set new range for xScale
+		xScale.range([0, widthObj.width]);
 
 		//Enter…
 		bars.enter()
 			.append("rect")
+			.attr("transform", "translate(" + widthObj.marginLeft + "," + (sizeFields.marginTop) + ")")
      		.attr('height', yScale.bandwidth())
 			.attr("y", function(d) {
 				return yScale(d.Dim);
 			})
-			.attr("x", function (d) {
-			 	return xScale(d.TimeStart.toDate());
-			 })
-			.attr('width', function(d){
-				let taskDuration = moment(moment(d.TimeStart).diff(minDate));
-				let barLength = moment(d.TimeEnd.diff(taskDuration));
-				return xScale(barLength.toDate());
-			})
+			.attr("x",0)
+				// , function (d) {
+			 // 	return xScale(d.TimeStart);
+			 // })
+			.attr('width',0)
+			// 	, function(d){
+			// 	let taskDuration = moment(moment(d.TimeStart).diff(minDate));
+			// 	let barLength = moment(moment(d.TimeEnd).diff(taskDuration));
+			// 	return xScale(barLength.toDate());
+			// })
 			.attr('fill', function (d, i) {
 				return d.Color;
 			})
+			.transition()
+				.duration(1000)
+				.ease(d3.easeLinear)
+				.delay(function(d, i) { return i * transitionDuration; })
+				.attr('width', function(d){
+					let taskDuration = moment(moment(d.TimeStart).diff(minDate));
+					let barLength = moment(moment(d.TimeEnd).diff(taskDuration));
+					return xScale(barLength.toDate());
+				})
+				.attr("x", function(d, i) {
+					return xScale(d.TimeStart);
+				})
 			;
-// console.log('bars',bars);
+
 		//Update…
 		bars.transition()
 			.duration(1000)
 			.attr("x", function(d, i) {
-				return xScale(d.TimeStart.toDate());
+				return xScale(d.TimeStart);
 			})
 			.attr("y", function(d) {
 				return yScale(d.Dim);
 			})
 			.attr('width', function(d){
 				let taskDuration = moment(moment(d.TimeStart).diff(minDate));
-				let barLength = moment(d.TimeEnd.diff(taskDuration));
-console.log('start', d.TimeStart, 'mindate',minDate, 'enddate',d.TimeEnd, 'bar width', xScale(barLength.toDate()), 'barLength', barLength,'duration', taskDuration);
+				let barLength = moment(moment(d.TimeEnd).diff(taskDuration));
 				return xScale(barLength.toDate());
 			})
 			.attr('fill', function (d, i) {
 				return d.Color;
 			})
      		.attr('height', yScale.bandwidth());
+
 
 		//Exit…
 		bars.exit()
@@ -148,20 +177,51 @@ console.log('start', d.TimeStart, 'mindate',minDate, 'enddate',d.TimeEnd, 'bar w
 		return sizeFields;
 	}
 
+	function getChartWidth(sizeFields) {
+				//get the total axis height
+		let yAxisText = $('.qv-object-sense-d3-gantt .yAxis.gantt g.tick text'),
+			yAxisG = $('.qv-object-sense-d3-gantt .yAxis.gantt g.tick');
+		let yAxisHeight = 0;
+		yAxisText.each(function (index) {
+			yAxisHeight += parseInt($(this)[0].getBoundingClientRect().height, 10);
+		});
+
+		// yAxisG.attr("transform", "translate(-10,0)");
+
+		// check if axis height can fit in canvas
+		let hideAxis 	= (sizeFields.height < yAxisHeight) || (sizeFields.divWidth<=480),
+			marginLeft 	= hideAxis ? 0 : 100,
+			width 		= sizeFields.divWidth - marginLeft - sizeFields.marginRight;
+
+		let widthObj = {
+			'hideAxis'		: hideAxis,
+			'marginLeft'	: marginLeft,
+			'width'			: width
+		}
+
+		return widthObj;
+	}
+	function getSelectors (chartID) {
+		//create selector vars if selectors were not passed in params
+		let selectors = {
+			'chart' 	: d3.select('div#gantt_' + chartID)
+		};
+		selectors['svg'] = selectors.chart.select('svg'),
+		selectors['artboard'] = selectors['svg'].select('g.axisBoard'),
+		selectors['bars'] 	= selectors['svg'].selectAll('g#bars > rect'),
+		selectors['xAxisEl'] = selectors['artboard'].select('g.xAxis.gantt'),
+		selectors['yAxisEl'] = selectors['artboard'].select('g.yAxis.gantt');
+
+		return selectors;
+	}
+
 	function resizeChart( data, chartID, selectors ) {
 	//////////////////////////////////////////////
 	// Draw key size-based element ///////////////
 	//////////////////////////////////////////////
 		if(!selectors){
 			//create selector vars if selectors were not passed in params
-			var selectors = {
-				'chart' 	: d3.select('div#gantt_' + chartID)
-			};
-			selectors['svg'] = selectors.chart.select('svg'),
-			selectors['artboard'] = selectors['svg'].select('g.axisBoard'),
-			selectors['bars'] 	= selectors['svg'].selectAll('g#bars > rect'),
-			selectors['xAxisEl'] = selectors['artboard'].select('g.xAxis.gantt'),
-			selectors['yAxisEl'] = selectors['artboard'].select('g.yAxis.gantt');
+			var selectors = getSelectors(chartID);
 		}
 
 
@@ -181,7 +241,7 @@ console.log('start', d.TimeStart, 'mindate',minDate, 'enddate',d.TimeEnd, 'bar w
 		// 	marginTop 		= divWidth <= 480 ? 0 : 30,
 		// 	height 			= divHeight - marginTop - marginBottom;
 
-console.log('selectors', selectors);
+// console.log('selectors', selectors);
 
 		let sizeFields = getSizeFields( selectors );
 // console.log('sizeFields',sizeFields);
@@ -189,7 +249,7 @@ console.log('selectors', selectors);
 		// set data related vars
 		let xScale 		= createXScale( data ),
 			yScale 		= createYScale( data, sizeFields.height ),
-			minDate		= d3.min(data, function(d) { return d.TimeStart.toDate(); }),
+			minDate		= d3.min(data, function(d) { return d.TimeStart; }),
 			xAxis       = d3.axisBottom().scale( xScale ),
 			yAxis       = d3.axisLeft().scale( yScale )
 	                      .tickSize(5),
@@ -205,10 +265,14 @@ console.log('selectors', selectors);
 			.call(axisTextWrap, 90)//second param is size for axis
 			;
 
+
+		let widthObj = getChartWidth(sizeFields);
+console.log(widthObj);
+
 		//get the total axis height
 		let yAxisText = $('.qv-object-sense-d3-gantt .yAxis.gantt g.tick text'),
 			yAxisG = $('.qv-object-sense-d3-gantt .yAxis.gantt g.tick');
-		var yAxisHeight = 0;
+		let yAxisHeight = 0;
 		yAxisText.each(function (index) {
 			yAxisHeight += parseInt($(this)[0].getBoundingClientRect().height, 10);
 		});
@@ -253,13 +317,13 @@ console.log('selectors', selectors);
 				.ease(d3.easeLinear)
 				.delay(function(d, i) { return i * transitionDuration; })
 				.attr("x", function (d) {
-				 	return xScale(d.TimeStart.toDate());
+				 	return xScale(d.TimeStart);
 				 })
 				.attr('rx', width*.001)
 				.attr('ry', width*.001)//used for curved bars
 				.attr('width', function(d){
 					let taskDuration = moment(moment(d.TimeStart).diff(minDate));
-					let barLength = moment(d.TimeEnd.diff(taskDuration));
+					let barLength = moment(moment(d.TimeEnd).diff(taskDuration));
 					return xScale(barLength.toDate());
 				})
 			;
@@ -316,7 +380,7 @@ console.log('selectors', selectors);
 
 		// Define the axes
 		var xAxis 	= d3.axisBottom().scale( xScale ),
-		minDate 	= d3.min(data, function(d) { return d.TimeStart.toDate(); });
+		minDate 	= d3.min(data, function(d) { return d.TimeStart; });
 
 		// Add the svg canvas
 		var svg = chart
@@ -365,6 +429,7 @@ console.log('selectors', selectors);
 			.on("mouseover", tooltipStart)          
 			.on("mouseout", tooltipEnd)
 		;
+console.log('O.G. bars', bars);
 
 		let selectors = {
 			'chart' 	: chart,
@@ -387,7 +452,7 @@ console.log('selectors', selectors);
 			tooltipDiv.transition()
 			.duration(200)
 			.style("opacity", .9);
-			tooltipDiv .html( d.Dim+ " from " + d.TimeStart.format("MMM YYYY") + ' to ' + d.TimeEnd.format("MMM YYYY"))
+			tooltipDiv .html( d.Dim+ " from " + moment(d.TimeStart).format("MMM YYYY") + ' to ' + moment(d.TimeEnd).format("MMM YYYY"))
 			.style("left", (d3.event.pageX - leftDivParent) + "px")
 			.style("top", (d3.event.pageY - topDivParent- 28) + "px");
 
@@ -475,8 +540,8 @@ console.log('selectors', selectors);
 			var indivJob = {
 			  'Dim'			: inner_d.dim_0,
 			  'ID'			: inner_d.dim_0_id,
-			  'TimeStart'	: moment(inner_d.dim_1, "M/D/YYYY"),
-			  'TimeEnd'		: moment(inner_d.dim_1, "M/D/YYYY").add(+inner_d.meas_0, 'days'),
+			  'TimeStart'	: moment(inner_d.dim_1, "M/D/YYYY").toDate(),
+			  'TimeEnd'		: moment(inner_d.dim_1, "M/D/YYYY").add(+inner_d.meas_0, 'days').toDate(),
 			  'goodData'	: goodData,
 			  'Color'		: dynamicColorVals
 			}
@@ -491,7 +556,7 @@ console.log('data', data);
 	}
 
 	function initChartRender(scope) {
-		console.log('called with scope', scope);
+console.log('called with scope', scope);
 
 		let layout 	= scope.$parent.layout,
 			chartID = scope.id;
@@ -530,7 +595,7 @@ console.log('data', data);
 			let data = this.$scope.data,
 				chartID = layout.qInfo.qId;
 
-			resizeChart( data, chartID );
+			// resizeChart( data, chartID );
 		},
 		paint: function ( $element, layout ) {
 
@@ -542,6 +607,12 @@ console.log('data', data);
 
 			app_this.$element = $element;
 
+			if (app_this.$scope.paint===true) {
+console.log('already painted');
+			} else {
+				initChartRender(app_this.$scope);
+				app_this.$scope.paint = true
+			}
 // console.log('paint called - layout', layout);
 
 /*Handling events
@@ -568,19 +639,7 @@ console.log('data', data);
 -full page refresh(does not exist yet)
 	-render data array
 	-render selection module
-*/
-// app_this.$scope.$watch("layout.qHyperCube.qDataPages[0].qMatrix", function (newVal, oldVal) {
-// 	if (!arraysEqual(oldVal,newVal) && newVal!==undefined){
-// 		console.log('real data change', oldVal, newVal);
-// 	}
-// });
-
-// app_this.$scope.$watch("layout.properties", function (newVal, oldVal) {
-// 	if (!arraysEqual(oldVal,newVal) && newVal!==undefined){
-// 		console.log('prop change only', oldVal, newVal);
-// 	}
-// });
-			
+*/	
 			// build selection model - utlizing the confirm selection model
 			if(this.selectionsEnabled && layout.selectionMode !== "NO") {
 				$element.find('.selectable').on('qv-activate', function() {
@@ -605,89 +664,6 @@ console.log('data', data);
 				$element.find('.selectable').toggleClass('active');
 			}
 
-// 			// //control initialization to only paint once
-// console.log('painted flag', app_this.painted);
-// 			if(app_this.painted) return;
-// 			app_this.painted = true;			
-
-			// // set layout variables for panel display show/hide
-			// app_this.$scope.$watch("layout", function (newVal, oldVal) {
-			// 	// let calcCondition = ((layout.properties.mapData.calculationConditionToggle==true && layout.properties.mapData.calculationCondition==-1) || layout.properties.mapData.calculationConditionToggle!=true) ? -1 : 0,
-			// 	// 	calcConditionMsg = (layout.properties.mapData.calculationConditionMessage === "" || layout.properties.mapData.calculationConditionMessage === null)? "Calculation condition unfulfilled" : layout.properties.mapData.calculationConditionMessage;
-
-			// 	// app_this.$scope.vars = {
-			// 	// 	panelDisplay		: layout.properties.p2pConfig.drivingModeConfig.mapPanelBool,
-			// 	// 	calcCondition 		: calcCondition,
-			// 	// 	calcConditionStmt	: calcConditionMsg
-			// 	// };
-
-			// 	//set flag to re-render below anytime preferences are changed
-			// 	app_this.painted = false;
-
-			// });
-
-
-// 			$('div#gantt_' + chartID).empty();
-
-// 			let ganttData	= senseD3.createJSONObj(layout);
-
-// // console.log('ganttData',ganttData);
-
-// 			let colorType		= layout.qHyperCube.qMeasureInfo[0].colorType,
-// 				//get the value selected in props and find the associated value in the palette array
-// 				singleColorVal 	= colorPalette.singlePalette[layout.qHyperCube.qMeasureInfo[0].singleColorVal],
-// 				// get scale selected from property
-// 				selectedScaleObj	= colorPalette.scales[layout.qHyperCube.qMeasureInfo[0].scaleColorVal],
-// 				// create an array of scale keys
-// 				selectedScaleKeys 	= Object.keys(selectedScaleObj),
-// 				// max scale
-// 				selectedScaleMax  	= (selectedScaleKeys.length+2),
-// 				// get the max if the values in the range are more than the values in the dropdown selected
-// 				selectedScale = selectedScaleObj[layout.qHyperCube.qMeasureInfo[0].numOfColorVals > selectedScaleMax ? selectedScaleMax : layout.qHyperCube.qMeasureInfo[0].numOfColorVals]
-// 				;
-
-// 			let data = ganttData.map(function (inner_d) {
-// 				let dynamicColorVals;
-// 				// set the color variable based on properties
-// 				if (colorType=='singleColor') {
-// 					dynamicColorVals = singleColorVal;
-// 				} else if (colorType=='useStatus' && layout.qHyperCube.qMeasureInfo[0].colorCodeBool) {
-// 					//check type to see if rgb passed
-// 					dynamicColorVals = typeof(inner_d.meas_0_attr_0)=='number' ? '#' + Number(inner_d.meas_0_attr_0).toString(16).substring(2) : inner_d.meas_0_attr_0;
-// 				} else if (colorType=='useStatus' && !layout.qHyperCube.qMeasureInfo[0].colorCodeBool) {
-// 					//use mod to repeat colors if scale is smaller than value shown
-// 					dynamicColorVals = selectedScale[inner_d.meas_0_attr_0 % selectedScale.length];
-// 				} else if (colorType=='colorByDim') {
-// 					//use mod to repeat colors if scale is smaller than value shown
-// 					dynamicColorVals = selectedScale[inner_d.dim_0_id % selectedScale.length];
-// 				} else {
-// 					dynamicColorVals = '#000000';
-// 				};
-
-// 				//create a flag for if data is valid
-// 				let goodData = inner_d.dim_0!=null && inner_d.dim_1!=null && inner_d.meas_0!=null
-// 								&& inner_d.dim_0!='NA' && inner_d.dim_1!='NA' && inner_d.meas_0!='NA'
-// 								&& inner_d.meas_0>0
-// 								;
-
-// 				// Create an array of objects with only the dimension, id, start, end, and color
-// 				var indivJob = {
-// 				  'Dim'			: inner_d.dim_0,
-// 				  'ID'			: inner_d.dim_0_id,
-// 				  'TimeStart'	: moment(inner_d.dim_1, "M/D/YYYY"),
-// 				  'TimeEnd'		: moment(inner_d.dim_1, "M/D/YYYY").add(+inner_d.meas_0, 'days'),
-// 				  'goodData'	: goodData,
-// 				  'Color'		: dynamicColorVals
-// 				};
-// 				return indivJob;
-// 			});
-
-// 			data = data.filter(function(d) { return d.goodData; });
-
-// 			app_this.$scope.data = data;
-
-// 			displayExperience( data, chartID );
-
 // 			return qlik.Promise.resolve();
 		},
 		controller: ['$scope', function ($scope) {
@@ -709,14 +685,14 @@ console.log('already painted');
 				
 				// events.push({ ts: extUtils.timeStamp(), event: 'Validated'});
 
-				// console.log('validated events', events);
+// console.log('validated events', events);
 			} );
 			//detect data changes
 			$scope.$watch("layout.qHyperCube.qDataPages[0].qMatrix", function (newVal, oldVal) {
 				if (!arraysEqual(oldVal,newVal) && newVal!==undefined){
-					// console.log('real data change', oldVal, newVal);
+console.log('real data change', oldVal, newVal);
 
-					// console.log('scope in data change',$scope);
+// console.log('scope in data change',$scope);
 					let data = dataObj($scope.$parent.layout);
 					dataChanges(data, $scope.id);
 				}
