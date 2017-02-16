@@ -40,7 +40,6 @@ define( ["qlik"
 							d3.max(data, function(d) { return d.TimeEnd; })
 						])
 						;
-// console.log('updated domain',d3.min(data, function(d) { return d.TimeStart; }),	d3.max(data, function(d) { return d.TimeEnd; }));
 		return xScale;
 	}
 
@@ -81,9 +80,9 @@ define( ["qlik"
 	                      .tickSize(5),
 	        numOfPts	= d3.max(data, function(d, i) { return i; })+1;
 
-	 	let transitionDuration = (numOfPts<5 ? 2500 : 5000)/numOfPts;
+	 	let transitionDuration = (numOfPts<5 ? 1000 : 2500)/numOfPts;
 
-console.log('data return', data);
+// console.log('data return', data);
 		//get chart selectors
 		let selectors = getSelectors(chartID);
 		//get size fields
@@ -95,28 +94,24 @@ console.log('data return', data);
 		let bars = svg.select('g#bars').selectAll('rect')
 						.data(data);
 
-console.log('new school bars', bars);
+// console.log('new school bars', bars);
 		// Set new range for xScale
 		xScale.range([0, widthObj.width]);
 
 		//Enter…
 		bars.enter()
 			.append("rect")
+			.attr("class", "selectable")
+			.attr('data-value', function (d) {
+				return d.ID;
+			})
 			.attr("transform", "translate(" + widthObj.marginLeft + "," + (sizeFields.marginTop) + ")")
      		.attr('height', yScale.bandwidth())
 			.attr("y", function(d) {
 				return yScale(d.Dim);
 			})
 			.attr("x",0)
-				// , function (d) {
-			 // 	return xScale(d.TimeStart);
-			 // })
 			.attr('width',0)
-			// 	, function(d){
-			// 	let taskDuration = moment(moment(d.TimeStart).diff(minDate));
-			// 	let barLength = moment(moment(d.TimeEnd).diff(taskDuration));
-			// 	return xScale(barLength.toDate());
-			// })
 			.attr('fill', function (d, i) {
 				return d.Color;
 			})
@@ -185,8 +180,6 @@ console.log('new school bars', bars);
 		yAxisText.each(function (index) {
 			yAxisHeight += parseInt($(this)[0].getBoundingClientRect().height, 10);
 		});
-
-		// yAxisG.attr("transform", "translate(-10,0)");
 
 		// check if axis height can fit in canvas
 		let hideAxis 	= (sizeFields.height < yAxisHeight) || (sizeFields.divWidth<=480),
@@ -267,7 +260,6 @@ console.log('new school bars', bars);
 
 
 		let widthObj = getChartWidth(sizeFields);
-console.log(widthObj);
 
 		//get the total axis height
 		let yAxisText = $('.qv-object-sense-d3-gantt .yAxis.gantt g.tick text'),
@@ -341,24 +333,24 @@ console.log(widthObj);
 
 	}
 
-	function barSelector( selections, api, chartID ) {
-	//////////////////////////////////////////////
-	// Create bar selection component ////////////
-	//////////////////////////////////////////////
-		//create selector vars
-		let chart 		= d3.select('div#gantt_' + chartID),
-			svg 		= chart.select('svg'),
-			artboard 	= svg.select('g.axisBoard'),
-			bars		= svg.selectAll('g#bars > rect');
+	// function barSelector( selections, api, chartID ) {
+	// //////////////////////////////////////////////
+	// // Create bar selection component ////////////
+	// //////////////////////////////////////////////
+	// 	//create selector vars
+	// 	let chart 		= d3.select('div#gantt_' + chartID),
+	// 		svg 		= chart.select('svg'),
+	// 		artboard 	= svg.select('g.axisBoard'),
+	// 		bars		= svg.selectAll('g#bars > rect');
 
-		//add click event
-		bars.on("click",function (d) {
-			// selections.selectedValue
-			api.selectValues(0, [d.ID], true);
-	    });
+	// 	//add click event
+	// 	bars.on("click",function (d) {
+	// 		// selections.selectedValue
+	// 		api.selectValues(0, [d.ID], true);
+	//     });
 
-		return selections;
-	}
+	// 	return selections;
+	// }
 
 	function displayExperience( data, id ) {
 		//////////////////////////////////////////////
@@ -429,7 +421,7 @@ console.log(widthObj);
 			.on("mouseover", tooltipStart)          
 			.on("mouseout", tooltipEnd)
 		;
-console.log('O.G. bars', bars);
+// console.log('O.G. bars', bars);
 
 		let selectors = {
 			'chart' 	: chart,
@@ -550,14 +542,12 @@ console.log('O.G. bars', bars);
 
 		data = data.filter(function(d) { return d.goodData; });
 
-console.log('data', data);
+// console.log('data', data);
 
 		return data;
 	}
 
 	function initChartRender(scope) {
-console.log('called with scope', scope);
-
 		let layout 	= scope.$parent.layout,
 			chartID = scope.id;
 		
@@ -592,10 +582,26 @@ console.log('called with scope', scope);
 			exportData : true
 		},
 		resize: function ($element, layout) {
-			let data = this.$scope.data,
-				chartID = layout.qInfo.qId;
+			let app_this 	= this,
+				data 		= app_this.$scope.data,
+				chartID 	= layout.qInfo.qId;
 
-			// resizeChart( data, chartID );
+			
+			resizeChart( data, chartID );
+// 			app_this.$scope.component.model.Validated.bind( function () {
+// 				console.info( 'Validated' );
+
+// // 				if ($scope.paint===true) {
+// // console.log('already painted');
+// // 				} else {
+// 					// initChartRender($scope);
+// 				// 	$scope.paint = true
+// 				// }
+				
+// 				// events.push({ ts: extUtils.timeStamp(), event: 'Validated'});
+
+// // console.log('validated events', events);
+// 			} );
 		},
 		paint: function ( $element, layout ) {
 
@@ -607,13 +613,37 @@ console.log('called with scope', scope);
 
 			app_this.$element = $element;
 
-			if (app_this.$scope.paint===true) {
-console.log('already painted');
-			} else {
-				initChartRender(app_this.$scope);
-				app_this.$scope.paint = true
+			if(layout.qHyperCube.qDataPages[0] && $element.find('div#gantt_' + chartID).length>0) {
+				if (app_this.$scope.paint===true) {
+					console.log('already painted');
+				} else {
+					initChartRender(app_this.$scope);
+					app_this.$scope.paint = true;
+				}
+				// build selection model - utlizing the confirm selection model
+				if(app_this.selectionsEnabled && layout.selectionMode !== "NO") {
+					$element.find('.selectable').on('qv-activate', function() {
+						if(this.hasAttribute("data-value")) {
+							var value = parseInt(this.getAttribute("data-value"), 10), dim = 0;
+
+							if(layout.selectionMode === "CONFIRM") {
+								app_this.$scope.selectValues(dim, [value], true);
+
+								//set classes for selectable/selected depending on what was already set
+								if ($(this).attr("class").indexOf("selected") > -1) {
+									var selClass = $(this).attr("class");
+									$(this).attr("class", selClass.replace("selected", "selectable"));
+								} else {
+									$(this).attr("class", "selected");
+								}
+							} else {
+								app_this.$scope.backendApi.selectValues(dim, [value], true);
+							}
+						}
+					});
+					$element.find('.selectable').toggleClass('active');
+				}
 			}
-// console.log('paint called - layout', layout);
 
 /*Handling events
 -data selection change (layout.qHyperCube)
@@ -640,29 +670,7 @@ console.log('already painted');
 	-render data array
 	-render selection module
 */	
-			// build selection model - utlizing the confirm selection model
-			if(this.selectionsEnabled && layout.selectionMode !== "NO") {
-				$element.find('.selectable').on('qv-activate', function() {
-					if(this.hasAttribute("data-value")) {
-						var value = parseInt(this.getAttribute("data-value"), 10), dim = 0;
 
-						if(layout.selectionMode === "CONFIRM") {
-							app_this.$scope.selectValues(dim, [value], true);
-
-							//set classes for selectable/selected depending on what was already set
-							if ($(this).attr("class").indexOf("selected") > -1) {
-								var selClass = $(this).attr("class");
-								$(this).attr("class", selClass.replace("selected", "selectable"));
-							} else {
-								$(this).attr("class", "selected");
-							}
-						} else {
-							app_this.$scope.backendApi.selectValues(dim, [value], true);
-						}
-					}
-				});
-				$element.find('.selectable').toggleClass('active');
-			}
 
 // 			return qlik.Promise.resolve();
 		},
@@ -674,23 +682,24 @@ console.log('already painted');
 			 *
 			 * @description The data has been recalculated and new valid data is available.
 			 */
-			$scope.component.model.Validated.bind( function () {
-				console.info( 'Validated' );
-				if ($scope.paint===true) {
-console.log('already painted');
-				} else {
-					initChartRender($scope);
-					$scope.paint = true
-				}
+// console.log('model', $scope.component.model)
+			// $scope.component.model.Validated.bind( function () {
+			// 	console.info( 'Validated' );
+// 				if ($scope.paint===true) {
+// console.log('already painted');
+// 				} else {
+					// initChartRender($scope);
+				// 	$scope.paint = true
+				// }
 				
 				// events.push({ ts: extUtils.timeStamp(), event: 'Validated'});
 
 // console.log('validated events', events);
-			} );
+			// } );
 			//detect data changes
 			$scope.$watch("layout.qHyperCube.qDataPages[0].qMatrix", function (newVal, oldVal) {
 				if (!arraysEqual(oldVal,newVal) && newVal!==undefined){
-console.log('real data change', oldVal, newVal);
+// console.log('real data change', oldVal, newVal);
 
 // console.log('scope in data change',$scope);
 					let data = dataObj($scope.$parent.layout);
