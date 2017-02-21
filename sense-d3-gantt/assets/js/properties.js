@@ -236,14 +236,14 @@ define( [], function () {
 				},
 				settings : {
 					uses : "settings"
-					// ,items : {
-					// 	initFetchRows : {
-					// 		ref : "qHyperCubeDef.qInitialDataFetch.0.qHeight",
-					// 		label : "Initial fetch rows",
-					// 		type : "number",
-					// 		defaultValue : 50
-					// 	}
-					// }
+					,items : {
+						initFetchRows : {
+							ref : "qHyperCubeDef.qInitialDataFetch.0.qHeight",
+							label : "Max Rows to Display",
+							type : "number",
+							defaultValue : 50
+						}
+					}
 				}
 			}
 		}

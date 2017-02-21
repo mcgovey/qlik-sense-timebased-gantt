@@ -22,11 +22,15 @@ define( ["qlik"
 	  if (a == null || b == null) return false;
 	  if (a.length != b.length) return false;
 
-	  // If you don't care about the order of the elements inside
-	  // the array, you should sort both arrays here.
-
 	  for (var i = 0; i < a.length; ++i) {
-	    if (a[i] !== b[i]) return false;
+	  	//if nested array - recurse the value
+// console.log('type of subarray', typeof(a[i]), typeof(b[i]))
+	  	if (typeof(a[i])==='array' && typeof(b[i])==='array') {
+			arraysEqual(a[i], b[i]);
+	  	}
+	    else if (a[i] !== b[i]) {
+	    	return false
+	    };
 	  }
 	  return true;
 	}
@@ -56,24 +60,34 @@ define( ["qlik"
 		return yScale;
 	}
 	function dataChanges( data, chartID ) {
-		//create selector vars
-		let chart 		= d3.select('div#gantt_' + chartID),
-			svg 		= chart.select('svg'),
-			artboard 	= svg.select('g.axisBoard'),
-			// bars		= svg.selectAll('g#bars > rect'),
-			xAxisEl		= artboard.select('g.xAxis.gantt'),
-			yAxisEl		= artboard.select('g.yAxis.gantt');
-		// create dynamic sizing
-		let	divWidth 		= parseInt(chart.style('width'), 10),
-			divHeight		= parseInt(chart.style('height'), 10),
-			marginRight		= 20,
-			marginBottom	= 30,
-			// marginLeft 		= divWidth <= 480 ? 0 : 100,
-			marginTop 		= divWidth <= 480 ? 0 : 30,
-			height 			= divHeight - marginTop - marginBottom;
+
+		//get chart selectors
+		let selectors = getSelectors(chartID);
+		//get size fields
+		let sizeFields = getSizeFields( selectors );
+		//get width
+		let widthObj = getChartWidth(sizeFields);
+
+		// //create selector vars
+		// let chart 		= d3.select('div#gantt_' + chartID),
+		// 	svg 		= chart.select('svg'),
+		// 	artboard 	= svg.select('g.axisBoard'),
+		// 	// bars		= svg.selectAll('g#bars > rect'),
+		// 	xAxisEl		= artboard.select('g.xAxis.gantt'),
+		// 	yAxisEl		= artboard.select('g.yAxis.gantt');
+
+		// // create dynamic sizing
+		// let	divWidth 		= parseInt(selectors.chart.style('width'), 10),
+		// 	divHeight		= parseInt(selectors.chart.style('height'), 10),
+		// 	marginRight		= 20,
+		// 	marginBottom	= 30,
+		// 	// marginLeft 		= divWidth <= 480 ? 0 : 100,
+		// 	marginTop 		= divWidth <= 480 ? 0 : 30,
+		// 	height 			= divHeight - marginTop - marginBottom;
+
 		// set data related vars
 		let xScale 		= createXScale( data ),
-			yScale 		= createYScale( data, height ),
+			yScale 		= createYScale( data, sizeFields.height ),
 			minDate		= d3.min(data, function(d) { return d.TimeStart; }),
 			xAxis       = d3.axisBottom().scale( xScale ),
 			yAxis       = d3.axisLeft().scale( yScale )
@@ -83,18 +97,11 @@ define( ["qlik"
 	 	let transitionDuration = (numOfPts<5 ? 1000 : 2500)/numOfPts;
 
 // console.log('data return', data);
-		//get chart selectors
-		let selectors = getSelectors(chartID);
-		//get size fields
-		let sizeFields = getSizeFields( selectors );
-		//get width
-		let widthObj = getChartWidth(sizeFields);
 
 
-		let bars = svg.select('g#bars').selectAll('rect')
+		let bars = selectors.svg.select('g#bars').selectAll('rect')
 						.data(data);
 
-// console.log('new school bars', bars);
 		// Set new range for xScale
 		xScale.range([0, widthObj.width]);
 
@@ -153,8 +160,14 @@ define( ["qlik"
 		bars.exit()
 			.transition()
 			.duration(1000)
-			.attr("y", height)
+			.attr("y", sizeFields.height)
 			.remove();
+
+		// give the x axis the resized scale
+		xAxis.scale(xScale);
+
+		// draw the new xAxis
+		selectors.xAxisEl.call(xAxis);
 // console.log('bars exit',bars);
 	}
 	function getSizeFields( selectors ) {
@@ -212,18 +225,21 @@ define( ["qlik"
 	//////////////////////////////////////////////
 	// Draw key size-based element ///////////////
 	//////////////////////////////////////////////
+		let selectorVar;
 		if(!selectors){
 			//create selector vars if selectors were not passed in params
-			var selectors = getSelectors(chartID);
+			selectorVar = getSelectors(chartID);
+		} else {
+			selectorVar = selectors;
 		}
 
 
-		var chart 		= d3.select('div#gantt_' + chartID),
-			svg 		= chart.select('svg'),
-			artboard 	= svg.select('g.axisBoard'),
-			bars		= svg.selectAll('g#bars > rect'),
-			xAxisEl		= artboard.select('g.xAxis.gantt'),
-			yAxisEl		= artboard.select('g.yAxis.gantt');
+		// var chart 		= d3.select('div#gantt_' + chartID),
+		// 	svg 		= chart.select('svg'),
+		// 	artboard 	= svg.select('g.axisBoard'),
+		// 	bars		= svg.selectAll('g#bars > rect'),
+		// 	xAxisEl		= artboard.select('g.xAxis.gantt'),
+		// 	yAxisEl		= artboard.select('g.yAxis.gantt');
 
 		// // create dynamic sizing
 		// let	divWidth 		= parseInt(selectors.chart.style('width'), 10),
@@ -234,10 +250,7 @@ define( ["qlik"
 		// 	marginTop 		= divWidth <= 480 ? 0 : 30,
 		// 	height 			= divHeight - marginTop - marginBottom;
 
-// console.log('selectors', selectors);
-
-		let sizeFields = getSizeFields( selectors );
-// console.log('sizeFields',sizeFields);
+		let sizeFields = getSizeFields( selectorVar );
 
 		// set data related vars
 		let xScale 		= createXScale( data ),
@@ -251,10 +264,10 @@ define( ["qlik"
 	   var transitionDuration = (numOfPts<5 ? 2500 : 5000)/numOfPts;
 
 		//change yaxis and hide if width below "small" screen size breakpoint
-		yAxisEl.call(yAxis);
+		selectorVar.yAxisEl.call(yAxis);
 // console.log('axis', yAxis, 'el', yAxisEl);
 
-		yAxisEl.selectAll(".tick text")
+		selectorVar.yAxisEl.selectAll(".tick text")
 			.call(axisTextWrap, 90)//second param is size for axis
 			;
 
@@ -277,10 +290,10 @@ define( ["qlik"
 			width 		= sizeFields.divWidth - marginLeft - sizeFields.marginRight;
 
 		// translate g inside svg for axis container
-		artboard.attr("transform", "translate(" + marginLeft + "," + sizeFields.marginTop + ")")
+		selectorVar.artboard.attr("transform", "translate(" + marginLeft + "," + sizeFields.marginTop + ")")
 
 		// set the svg dimensions
-		svg.attr("width", sizeFields.divWidth - 5)
+		selectorVar.svg.attr("width", sizeFields.divWidth - 5)
 			.attr("height", sizeFields.divHeight - 5);
 
 		// Set new range for xScale
@@ -290,14 +303,14 @@ define( ["qlik"
 		xAxis.scale(xScale);
 
 		// draw the new xAxis
-		xAxisEl.call(xAxis)
+		selectorVar.xAxisEl.call(xAxis)
 			.transition()
 				.duration(1000)
 				.ease(d3.easeLinear)
 				.style("opacity",(sizeFields.divWidth<=480 ? 0 : 1));
 
 		//Create bars
-		bars.attr("transform", "translate(" + marginLeft + "," + (sizeFields.marginTop) + ")")
+		selectorVar.bars.attr("transform", "translate(" + marginLeft + "," + (sizeFields.marginTop) + ")")
 			.transition()
 				.duration(200)
 	     		.attr('height', yScale.bandwidth())
@@ -321,10 +334,10 @@ define( ["qlik"
 			;
 
 		// change xAxis positioning
-		xAxisEl.attr("transform", "translate(0," + sizeFields.height + ")");
+		selectorVar.xAxisEl.attr("transform", "translate(0," + sizeFields.height + ")");
 
 		//change yaxis and hide if width below "small" screen size breakpoint
-		yAxisEl.transition()
+		selectorVar.yAxisEl.transition()
 				.duration(1000)
 				.ease(d3.easeLinear)
 				.style("opacity",(hideAxis ? 0 : 1));
@@ -547,6 +560,16 @@ define( ["qlik"
 		return data;
 	}
 
+	function validDataObject (layout) {
+		/*---------------------------------
+		Test for edge cases here
+		-less than two dims
+		-no measure
+		-second dim not of type date
+		-----------------------------------*/
+		return true;
+	}
+
 	function initChartRender(scope) {
 		let layout 	= scope.$parent.layout,
 			chartID = scope.id;
@@ -557,10 +580,47 @@ define( ["qlik"
 
 		scope.data = data;
 
+console.log('dataObj', data);
+
 		displayExperience( data, chartID );
 
 	}
 
+	function bindSelections( layout, $element, app_this, $scope ) {
+		let selectionsEnabled,
+			scope;
+
+		if (!app_this) {
+			selectionsEnabled 	= true,
+			scope 				= $scope;
+		} else {
+			selectionsEnabled 	= app_this.selectionsEnabled,
+			scope 				= app_this.$scope;
+		}
+
+		if(selectionsEnabled && layout.selectionMode !== "NO") {
+			$element.find('.selectable').on('qv-activate', function() {
+				if(this.hasAttribute("data-value")) {
+					var value = parseInt(this.getAttribute("data-value"), 10), dim = 0;
+
+					if(layout.selectionMode === "CONFIRM") {
+						scope.selectValues(dim, [value], true);
+
+						//set classes for selectable/selected depending on what was already set
+						if ($(this).attr("class").indexOf("selected") > -1) {
+							var selClass = $(this).attr("class");
+							$(this).attr("class", selClass.replace("selected", "selectable"));
+						} else {
+							$(this).attr("class", "selected");
+						}
+					} else {
+						scope.backendApi.selectValues(dim, [value], true);
+					}
+				}
+			});
+			$element.find('.selectable').toggleClass('active');
+		}
+	}
 
 	return {
        template: template,
@@ -611,7 +671,7 @@ define( ["qlik"
 			// set layout variable to create id used to set the div id
 			app_this.$scope.id= chartID;
 
-			app_this.$element = $element;
+			app_this.$scope.$element = $element;
 
 			if(layout.qHyperCube.qDataPages[0] && $element.find('div#gantt_' + chartID).length>0) {
 				if (app_this.$scope.paint===true) {
@@ -621,28 +681,8 @@ define( ["qlik"
 					app_this.$scope.paint = true;
 				}
 				// build selection model - utlizing the confirm selection model
-				if(app_this.selectionsEnabled && layout.selectionMode !== "NO") {
-					$element.find('.selectable').on('qv-activate', function() {
-						if(this.hasAttribute("data-value")) {
-							var value = parseInt(this.getAttribute("data-value"), 10), dim = 0;
+				bindSelections(layout, $element, app_this);
 
-							if(layout.selectionMode === "CONFIRM") {
-								app_this.$scope.selectValues(dim, [value], true);
-
-								//set classes for selectable/selected depending on what was already set
-								if ($(this).attr("class").indexOf("selected") > -1) {
-									var selClass = $(this).attr("class");
-									$(this).attr("class", selClass.replace("selected", "selectable"));
-								} else {
-									$(this).attr("class", "selected");
-								}
-							} else {
-								app_this.$scope.backendApi.selectValues(dim, [value], true);
-							}
-						}
-					});
-					$element.find('.selectable').toggleClass('active');
-				}
 			}
 
 /*Handling events
@@ -675,7 +715,7 @@ define( ["qlik"
 // 			return qlik.Promise.resolve();
 		},
 		controller: ['$scope', function ($scope) {
-			var events = $scope.events =  [];
+			let events = $scope.events =  [];
 
 			/**
 			 * Validated event.
@@ -699,17 +739,55 @@ define( ["qlik"
 			//detect data changes
 			$scope.$watch("layout.qHyperCube.qDataPages[0].qMatrix", function (newVal, oldVal) {
 				if (!arraysEqual(oldVal,newVal) && newVal!==undefined){
-// console.log('real data change', oldVal, newVal);
-
-// console.log('scope in data change',$scope);
 					let data = dataObj($scope.$parent.layout);
 					dataChanges(data, $scope.id);
 				}
 			});
+// 			$scope.$watchCollection("layout.qHyperCube.qMeasureInfo", function (newVal, oldVal) {
+// console.log('measure watch called', oldVal, newVal);
+// 				if (!arraysEqual(oldVal,newVal) && newVal!==undefined){
 
-			$scope.$watch("layout.properties", function (newVal, oldVal) {
-				if (!arraysEqual(oldVal,newVal) && newVal!==undefined){
-					console.log('prop change only', oldVal, newVal);
+// 					// initChartRender($scope);
+// 					// $scope.paint = true;
+// 					// bindSelections($scope.$parent.layout, $scope.$element, '', $scope);
+
+// console.log('real prop change', oldVal, newVal);
+// 				}
+// 			});
+// 			$scope.$watchCollection("layout.qHyperCube.qDimensionInfo", function (newVal, oldVal) {
+// 				if (!arraysEqual(oldVal,newVal) && newVal!==undefined){
+
+// 					initChartRender($scope);
+// 					$scope.paint = true;
+// 					bindSelections($scope.$parent.layout, $scope.$element, '', $scope);
+
+// console.log('real prop change', oldVal, newVal);
+// 				}
+// 			});
+
+			//watch if dimension or measure fields change
+			let fieldsToWatch = ["id"
+								,"layout.qHyperCube.qDimensionInfo[0].cId"
+								,"layout.qHyperCube.qDimensionInfo[1].cId"
+								,"layout.qHyperCube.qMeasureInfo[0].cId"
+								,"layout.qHyperCube.qMeasureInfo[0].colorCodeBool"
+								,"layout.qHyperCube.qMeasureInfo[0].colorType"
+								,"layout.qHyperCube.qMeasureInfo[0].numOfColorVals"
+								,"layout.qHyperCube.qMeasureInfo[0].scaleColorVal"
+								,"layout.qHyperCube.qMeasureInfo[0].singleColorVal"];
+
+			$scope.$watchGroup(fieldsToWatch, function (newVal, oldVal) {
+// console.log('prop change monitored', oldVal, newVal, arraysEqual(oldVal,newVal));
+				// let myId = $scope.id;
+				let chartElementCount = $scope.id==='undefined' ? 0 : $('div#gantt_' + newVal[0]).length;
+
+				if ((!arraysEqual(oldVal,newVal) && newVal!==undefined) || chartElementCount!==0) {
+
+					initChartRender($scope);
+					$scope.paint = true;
+					bindSelections($scope.$parent.layout, $scope.$element, '', $scope);
+
+// console.log('prop change only', oldVal, newVal);
 				}
 			});
 		}]
