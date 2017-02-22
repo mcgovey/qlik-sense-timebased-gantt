@@ -1,16 +1,30 @@
+requirejs.config({
+    paths: {
+      d3: "../extensions/sense-d3-gantt/assets/js/d3.min",
+      lasso: "../extensions/sense-d3-gantt/assets/js/d3-lasso"
+    },
+	shim : {
+		"lasso" : {
+          "exports" : "lasso",
+			"deps" : ["d3"]
+		}
+	}
+});
 define( ["qlik"
 		,"jquery"
 		,"./assets/js/properties"
 		,"./assets/js/colorPalettes"
-		, "text!./style.css"
-		, "text!./template.html"
-		,'//d3js.org/d3.v4.min.js'
+		,"text!./style.css"
+		,"text!./template.html"
+		,'./assets/js/d3.min'
+		// ,'//d3js.org/d3.v4.min.js'
 		,'require'
 		,'https://momentjs.com/downloads/moment.js'
+		,'./assets/js/d3-lasso'
 		,'./bower_components/QlikSenseD3Utils/senseD3utils'
 		// ,'https://d3js.org/d3-scale-chromatic.v1.min.js'
 		], 
-	function (qlik, $, props, colorPalette, cssContent, template, d3, localRequire, moment) {
+	function (qlik, $, props, colorPalette, cssContent, template, d3, localRequire, moment, lasso) {
 	'use strict';
 
     $("<style>").html(cssContent).appendTo("head");
@@ -109,6 +123,7 @@ define( ["qlik"
 		bars.enter()
 			.append("rect")
 			.attr("class", "selectable")
+			.attr("class", "lassoable")
 			.attr('data-value', function (d) {
 				return d.ID;
 			})
@@ -168,9 +183,12 @@ define( ["qlik"
 
 		// draw the new xAxis
 		selectors.xAxisEl.call(xAxis);
-// console.log('bars exit',bars);
 	}
 	function getSizeFields( selectors ) {
+		/*------------------------------------------------------
+		Create an object that will store some of the key 
+			sizing elements of the div and chart
+		------------------------------------------------------*/
 		// create dynamic sizing
 		let	sizeFields = {
 			divWidth 		: parseInt(selectors.chart.style('width'), 10),
@@ -222,9 +240,10 @@ define( ["qlik"
 	}
 
 	function resizeChart( data, chartID, selectors ) {
-	//////////////////////////////////////////////
-	// Draw key size-based element ///////////////
-	//////////////////////////////////////////////
+		/*------------------------------------------------------
+		Draw and resize key elements on the chart on initial
+			render and screen or chart size changes
+		------------------------------------------------------*/
 		let selectorVar;
 		if(!selectors){
 			//create selector vars if selectors were not passed in params
@@ -233,45 +252,28 @@ define( ["qlik"
 			selectorVar = selectors;
 		}
 
-
-		// var chart 		= d3.select('div#gantt_' + chartID),
-		// 	svg 		= chart.select('svg'),
-		// 	artboard 	= svg.select('g.axisBoard'),
-		// 	bars		= svg.selectAll('g#bars > rect'),
-		// 	xAxisEl		= artboard.select('g.xAxis.gantt'),
-		// 	yAxisEl		= artboard.select('g.yAxis.gantt');
-
-		// // create dynamic sizing
-		// let	divWidth 		= parseInt(selectors.chart.style('width'), 10),
-		// 	divHeight		= parseInt(selectors.chart.style('height'), 10),
-		// 	marginRight		= 20,
-		// 	marginBottom	= 30,
-		// 	// marginLeft 		= divWidth <= 480 ? 0 : 100,
-		// 	marginTop 		= divWidth <= 480 ? 0 : 30,
-		// 	height 			= divHeight - marginTop - marginBottom;
-
 		let sizeFields = getSizeFields( selectorVar );
 
 		// set data related vars
-		let xScale 		= createXScale( data ),
-			yScale 		= createYScale( data, sizeFields.height ),
+		let xScale		= createXScale( data ),
+			yScale		= createYScale( data, sizeFields.height ),
 			minDate		= d3.min(data, function(d) { return d.TimeStart; }),
-			xAxis       = d3.axisBottom().scale( xScale ),
-			yAxis       = d3.axisLeft().scale( yScale )
-	                      .tickSize(5),
-	        numOfPts	= d3.max(data, function(d, i) { return i; })+1;
+			xAxis		= d3.axisBottom().scale( xScale ),
+			yAxis		= d3.axisLeft().scale( yScale )
+							.tickSize(5),
+			numOfPts	= d3.max(data, function(d, i) { return i; })+1;
 
-	   var transitionDuration = (numOfPts<5 ? 2500 : 5000)/numOfPts;
+		var transitionDuration = (numOfPts<5 ? 2500 : 5000)/numOfPts;
 
 		//change yaxis and hide if width below "small" screen size breakpoint
 		selectorVar.yAxisEl.call(yAxis);
-// console.log('axis', yAxis, 'el', yAxisEl);
 
+		//wrap text on the yaxis
 		selectorVar.yAxisEl.selectAll(".tick text")
 			.call(axisTextWrap, 90)//second param is size for axis
 			;
 
-
+		//get width object for sizing purposes
 		let widthObj = getChartWidth(sizeFields);
 
 		//get the total axis height
@@ -281,8 +283,6 @@ define( ["qlik"
 		yAxisText.each(function (index) {
 			yAxisHeight += parseInt($(this)[0].getBoundingClientRect().height, 10);
 		});
-
-		// yAxisG.attr("transform", "translate(-10,0)");
 
 		// check if axis height can fit in canvas
 		let hideAxis 	= (sizeFields.height < yAxisHeight) || (sizeFields.divWidth<=480),
@@ -346,29 +346,10 @@ define( ["qlik"
 
 	}
 
-	// function barSelector( selections, api, chartID ) {
-	// //////////////////////////////////////////////
-	// // Create bar selection component ////////////
-	// //////////////////////////////////////////////
-	// 	//create selector vars
-	// 	let chart 		= d3.select('div#gantt_' + chartID),
-	// 		svg 		= chart.select('svg'),
-	// 		artboard 	= svg.select('g.axisBoard'),
-	// 		bars		= svg.selectAll('g#bars > rect');
-
-	// 	//add click event
-	// 	bars.on("click",function (d) {
-	// 		// selections.selectedValue
-	// 		api.selectValues(0, [d.ID], true);
-	//     });
-
-	// 	return selections;
-	// }
-
 	function displayExperience( data, id ) {
-		//////////////////////////////////////////////
-		// Chart Config /////////////////////////////
-		//////////////////////////////////////////////
+		/*------------------------------------------------------
+		Create the base elements of the D3 chart
+		------------------------------------------------------*/
 		let chartID = id;
 		let chart = d3.select('div#gantt_' + chartID)
 			.classed('container', true);
@@ -379,8 +360,7 @@ define( ["qlik"
 		.style("opacity", 0);
 
 		// Set the scales ranges
-		var xScale 	= createXScale( data ), //d3.scaleTime(),
-			// yScale 		= d3.scaleBand().rangeRound([0, height]),
+		var xScale 	= createXScale( data ),
 			colorScale 	= d3.scaleSequential(d3.interpolatePuBuGn);
 
 		// Define the axes
@@ -416,6 +396,7 @@ define( ["qlik"
 			.enter()
 			.append("rect")
 			.attr("class", "selectable")
+			.attr("class", "lassoable")
 			.attr('data-value', function (d) {
 				return d.ID;
 			})
@@ -434,8 +415,8 @@ define( ["qlik"
 			.on("mouseover", tooltipStart)          
 			.on("mouseout", tooltipEnd)
 		;
-// console.log('O.G. bars', bars);
 
+		// create selectors to pass to resize function
 		let selectors = {
 			'chart' 	: chart,
 			'svg' 		: svg,
@@ -444,9 +425,8 @@ define( ["qlik"
 			'xAxisEl' 	: xAxisEl,
 			'yAxisEl'	: yAxisEl
 		};
-// console.log('selectors',selectors);
 
-		 function tooltipStart(d, i, bars) {
+		function tooltipStart(d, i, bars) {
 			let bar				= $(bars[i]),
 				topBar 			= bar.offset().top,
 				divParent		= bar.closest('.container'),
@@ -455,11 +435,11 @@ define( ["qlik"
 			
 			// create transitions for tooltip
 			tooltipDiv.transition()
-			.duration(200)
-			.style("opacity", .9);
+				.duration(200)
+				.style("opacity", .9);
 			tooltipDiv .html( d.Dim+ " from " + moment(d.TimeStart).format("MMM YYYY") + ' to ' + moment(d.TimeEnd).format("MMM YYYY"))
-			.style("left", (d3.event.pageX - leftDivParent) + "px")
-			.style("top", (d3.event.pageY - topDivParent- 28) + "px");
+				.style("left", (d3.event.pageX - leftDivParent) + "px")
+				.style("top", (d3.event.pageY - topDivParent- 28) + "px");
 
 		 }
 
@@ -475,35 +455,96 @@ define( ["qlik"
 
 	}
 
+	function lassoItems( svg ) {
+		/*------------------------------------------------------
+		Create a lasso selection using the d3.lasso library
+		------------------------------------------------------*/
+		// Define the lasso
+		var lasso = d3.lasso()
+			.closePathDistance(75) // max distance for the lasso loop to be closed
+			.closePathSelect(true) // can items be selected by closing the path?
+			.hoverSelect(true) // can items by selected by hovering over them?
+			.area(svg.selectAll('.lassoable')) // a lasso can be drawn on the bg rectangle and any of the circles on top of it
+			.items(circles) // the circles will be evaluated for lassoing
+			.on("start",lasso_start) // lasso start function
+			.on("draw",lasso_draw) // lasso draw function
+			.on("end",lasso_end) // lasso end function
+			;
+
+		svg.call(lasso);
+
+		function lasso_start() {
+		lasso.items()
+		.classed({"not-possible":true}); // style as not possible
+		}
+
+		function lasso_draw() {
+
+		// Style the possible dots
+		lasso.items().filter(function(d) {return d.possible===true})
+		.classed({"not-possible":false,"possible":true});
+
+		// Style the not possible dot
+		lasso.items().filter(function(d) {return d.possible===false})
+		.classed({"not-possible":true,"possible":false});
+
+		}
+
+		function lasso_end() {
+
+		// Get all the lasso items that were "selected" by the user
+		var selectedItems = lasso.items()
+			.filter(function(d) {
+				return d.selected;
+			});
+
+		// Retrieve the dimension element numbers for the selected items
+		var elemNos = selectedItems[0]
+			.map(function(d) {
+				return d.__data__[0].qElemNumber;
+			});
+
+		// Filter these dimension values
+		self.backendApi.selectValues(0,elemNos,true);
+		}
+	}
+
 	//function to wrap text for axis
 	function axisTextWrap(text, width) {
-	  text.each(function() {
-	    let text = d3.select(this),
-	        words = text.text().split(/\s+/).reverse(),
-	        word,
-	        line = [],
-	        lineNumber = 0,
-	        lineHeight = 1.1, // ems
-	        y = text.attr("y"),
-	        dy = parseFloat(text.attr("dy")),
-	        tspan = text.text(null).append("tspan").attr("x", -5).attr("y", y).attr("dy", dy + "em");
-	    while (word = words.pop()) {
-	      line.push(word);
-	      tspan.text(line.join(" "));
-	      if (tspan.node().getComputedTextLength() > width) {
-	        line.pop();
-	        tspan.text(line.join(" "));
-	        line = [word];
-	        tspan = text.append("tspan").attr("x", -5).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
-	      }
-	    }
+		/*------------------------------------------------------
+		Wrap yaxis text to fit on horizontally
+		------------------------------------------------------*/
+		text.each(function() {
+			let text = d3.select(this),
+				words = text.text().split(/\s+/).reverse(),
+				word,
+				line = [],
+				lineNumber = 0,
+				lineHeight = 1.1, // ems
+				y = text.attr("y"),
+				dy = parseFloat(text.attr("dy")),
+				tspan = text.text(null).append("tspan").attr("x", -5).attr("y", y).attr("dy", dy + "em");
+			while (word = words.pop()) {
+				line.push(word);
+				tspan.text(line.join(" "));
+				if (tspan.node().getComputedTextLength() > width) {
+					line.pop();
+					tspan.text(line.join(" "));
+					line = [word];
+					tspan = text.append("tspan").attr("x", -5).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+				}
+			}
 	  });
 	}
 	function dataObj(layout) {
+		/*------------------------------------------------------
+		Create a data object that will be used to render the
+			data in the app
+		------------------------------------------------------*/
+		//use senseD3 library to create a JSON object of dims and measures
 		let ganttData	= senseD3.createJSONObj(layout);
 
-// console.log('ganttData',ganttData);
-
+		//create color varialbes, starting with getting settings from extension
 		let colorType		= layout.qHyperCube.qMeasureInfo[0].colorType,
 			//get the value selected in props and find the associated value in the palette array
 			singleColorVal 	= colorPalette.singlePalette[layout.qHyperCube.qMeasureInfo[0].singleColorVal],
@@ -517,6 +558,7 @@ define( ["qlik"
 			selectedScale = selectedScaleObj[layout.qHyperCube.qMeasureInfo[0].numOfColorVals > selectedScaleMax ? selectedScaleMax : layout.qHyperCube.qMeasureInfo[0].numOfColorVals]
 			;
 
+		//map the data to color variables, remove bad data, then store in a new object
 		let data = ganttData.map(function (inner_d) {
 			let dynamicColorVals;
 			// set the color variable based on properties
@@ -555,12 +597,13 @@ define( ["qlik"
 
 		data = data.filter(function(d) { return d.goodData; });
 
-// console.log('data', data);
-
 		return data;
 	}
 
 	function validDataObject (layout) {
+		/*------------------------------------------------------
+		Test for edge cases to make sure that the data object is valid
+		------------------------------------------------------*/
 		/*---------------------------------
 		Test for edge cases here
 		-less than two dims
@@ -571,25 +614,36 @@ define( ["qlik"
 	}
 
 	function initChartRender(scope) {
+		/*------------------------------------------------------
+		Called during initial app creation and key property changes
+			 to render the chart for the first time
+		------------------------------------------------------*/
+		//add layout to scope and capture app id
 		let layout 	= scope.$parent.layout,
 			chartID = scope.id;
 		
-		$('div#gantt_' + scope.id).empty();
+		//remove any lingering DOM elements from div
+		$('div#gantt_' + chartID).empty();
 
+		//create the data object based on what is in the layout
 		let data = dataObj(layout);
 
+		//store the data in scope
 		scope.data = data;
 
-console.log('dataObj', data);
-
+		//render in the initial experience display
 		displayExperience( data, chartID );
 
 	}
 
 	function bindSelections( layout, $element, app_this, $scope ) {
+		/*------------------------------------------------------
+		Used to create selection objects for chart interactivity
+		------------------------------------------------------*/
 		let selectionsEnabled,
 			scope;
 
+		//check what parameters have been passed to the function and create varialbes
 		if (!app_this) {
 			selectionsEnabled 	= true,
 			scope 				= $scope;
@@ -598,6 +652,7 @@ console.log('dataObj', data);
 			scope 				= app_this.$scope;
 		}
 
+		//check that selections are enabled and the selection mode is set properly
 		if(selectionsEnabled && layout.selectionMode !== "NO") {
 			$element.find('.selectable').on('qv-activate', function() {
 				if(this.hasAttribute("data-value")) {
@@ -648,20 +703,6 @@ console.log('dataObj', data);
 
 			
 			resizeChart( data, chartID );
-// 			app_this.$scope.component.model.Validated.bind( function () {
-// 				console.info( 'Validated' );
-
-// // 				if ($scope.paint===true) {
-// // console.log('already painted');
-// // 				} else {
-// 					// initChartRender($scope);
-// 				// 	$scope.paint = true
-// 				// }
-				
-// 				// events.push({ ts: extUtils.timeStamp(), event: 'Validated'});
-
-// // console.log('validated events', events);
-// 			} );
 		},
 		paint: function ( $element, layout ) {
 
@@ -684,58 +725,10 @@ console.log('dataObj', data);
 				bindSelections(layout, $element, app_this);
 
 			}
-
-/*Handling events
--data selection change (layout.qHyperCube)
-	-re-render data array
-	-enter bars
-	-update bars
-	-exit bars
-	-resize bars - new max/min - change width/height
-	-resize yaxis
-	-resize xaxis
-	-resize func for data movement
--chart resize
-	-resize bars - change width/height
-	-resize yaxis
-	-resize xaxis
--configuration change(layout.properties)
-	-color changes
-		-recreate color in data array
-	-dim and measure changes
-		-re-render chart
-	-sort
-
--full page refresh(does not exist yet)
-	-render data array
-	-render selection module
-*/	
-
-
-// 			return qlik.Promise.resolve();
 		},
 		controller: ['$scope', function ($scope) {
 			let events = $scope.events =  [];
 
-			/**
-			 * Validated event.
-			 *
-			 * @description The data has been recalculated and new valid data is available.
-			 */
-// console.log('model', $scope.component.model)
-			// $scope.component.model.Validated.bind( function () {
-			// 	console.info( 'Validated' );
-// 				if ($scope.paint===true) {
-// console.log('already painted');
-// 				} else {
-					// initChartRender($scope);
-				// 	$scope.paint = true
-				// }
-				
-				// events.push({ ts: extUtils.timeStamp(), event: 'Validated'});
-
-// console.log('validated events', events);
-			// } );
 			//detect data changes
 			$scope.$watch("layout.qHyperCube.qDataPages[0].qMatrix", function (newVal, oldVal) {
 				if (!arraysEqual(oldVal,newVal) && newVal!==undefined){
@@ -743,27 +736,6 @@ console.log('dataObj', data);
 					dataChanges(data, $scope.id);
 				}
 			});
-// 			$scope.$watchCollection("layout.qHyperCube.qMeasureInfo", function (newVal, oldVal) {
-// console.log('measure watch called', oldVal, newVal);
-// 				if (!arraysEqual(oldVal,newVal) && newVal!==undefined){
-
-// 					// initChartRender($scope);
-// 					// $scope.paint = true;
-// 					// bindSelections($scope.$parent.layout, $scope.$element, '', $scope);
-
-// console.log('real prop change', oldVal, newVal);
-// 				}
-// 			});
-// 			$scope.$watchCollection("layout.qHyperCube.qDimensionInfo", function (newVal, oldVal) {
-// 				if (!arraysEqual(oldVal,newVal) && newVal!==undefined){
-
-// 					initChartRender($scope);
-// 					$scope.paint = true;
-// 					bindSelections($scope.$parent.layout, $scope.$element, '', $scope);
-
-// console.log('real prop change', oldVal, newVal);
-// 				}
-// 			});
 
 			//watch if dimension or measure fields change
 			let fieldsToWatch = ["id"
@@ -776,9 +748,9 @@ console.log('dataObj', data);
 								,"layout.qHyperCube.qMeasureInfo[0].scaleColorVal"
 								,"layout.qHyperCube.qMeasureInfo[0].singleColorVal"];
 
+			//watch for property changes defined above
 			$scope.$watchGroup(fieldsToWatch, function (newVal, oldVal) {
-// console.log('prop change monitored', oldVal, newVal, arraysEqual(oldVal,newVal));
-				// let myId = $scope.id;
+				//check if the chart has been rendered yet
 				let chartElementCount = $scope.id==='undefined' ? 0 : $('div#gantt_' + newVal[0]).length;
 
 				if ((!arraysEqual(oldVal,newVal) && newVal!==undefined) || chartElementCount!==0) {
@@ -786,8 +758,6 @@ console.log('dataObj', data);
 					initChartRender($scope);
 					$scope.paint = true;
 					bindSelections($scope.$parent.layout, $scope.$element, '', $scope);
-
-// console.log('prop change only', oldVal, newVal);
 				}
 			});
 		}]
