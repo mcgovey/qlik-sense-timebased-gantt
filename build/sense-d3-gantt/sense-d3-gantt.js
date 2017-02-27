@@ -38,7 +38,6 @@ define( ["qlik"
 
 	  for (var i = 0; i < a.length; ++i) {
 	  	//if nested array - recurse the value
-// console.log('type of subarray', typeof(a[i]), typeof(b[i]))
 	  	if (typeof(a[i])==='array' && typeof(b[i])==='array') {
 			arraysEqual(a[i], b[i]);
 	  	}
@@ -82,23 +81,6 @@ define( ["qlik"
 		//get width
 		let widthObj = getChartWidth(sizeFields);
 
-		// //create selector vars
-		// let chart 		= d3.select('div#gantt_' + chartID),
-		// 	svg 		= chart.select('svg'),
-		// 	artboard 	= svg.select('g.axisBoard'),
-		// 	// bars		= svg.selectAll('g#bars > rect'),
-		// 	xAxisEl		= artboard.select('g.xAxis.gantt'),
-		// 	yAxisEl		= artboard.select('g.yAxis.gantt');
-
-		// // create dynamic sizing
-		// let	divWidth 		= parseInt(selectors.chart.style('width'), 10),
-		// 	divHeight		= parseInt(selectors.chart.style('height'), 10),
-		// 	marginRight		= 20,
-		// 	marginBottom	= 30,
-		// 	// marginLeft 		= divWidth <= 480 ? 0 : 100,
-		// 	marginTop 		= divWidth <= 480 ? 0 : 30,
-		// 	height 			= divHeight - marginTop - marginBottom;
-
 		// set data related vars
 		let xScale 		= createXScale( data ),
 			yScale 		= createYScale( data, sizeFields.height ),
@@ -110,11 +92,10 @@ define( ["qlik"
 
 	 	let transitionDuration = (numOfPts<5 ? 1000 : 2500)/numOfPts;
 
-// console.log('data return', data);
-
-
 		let bars = selectors.svg.select('g#bars').selectAll('rect')
-						.data(data);
+						.data( data, function (d) {
+							return d.ID;
+						});
 
 		// Set new range for xScale
 		xScale.range([0, widthObj.width]);
@@ -122,8 +103,7 @@ define( ["qlik"
 		//Enter…
 		bars.enter()
 			.append("rect")
-			.attr("class", "selectable")
-			.attr("class", "lassoable")
+			.attr("class", "selectable lassoable")
 			.attr('data-value', function (d) {
 				return d.ID;
 			})
@@ -137,6 +117,9 @@ define( ["qlik"
 			.attr('fill', function (d, i) {
 				return d.Color;
 			})
+			// add tooltips to each bar
+			.on("mouseover", tooltipStart)
+			.on("mouseout", tooltipEnd)
 			.transition()
 				.duration(1000)
 				.ease(d3.easeLinear)
@@ -160,6 +143,8 @@ define( ["qlik"
 			.attr("y", function(d) {
 				return yScale(d.Dim);
 			})
+			.attr('rx', 2)
+			.attr('ry', 2)//used for curved bars
 			.attr('width', function(d){
 				let taskDuration = moment(moment(d.TimeStart).diff(minDate));
 				let barLength = moment(moment(d.TimeEnd).diff(taskDuration));
@@ -176,13 +161,37 @@ define( ["qlik"
 			.transition()
 			.duration(1000)
 			.attr("y", sizeFields.height)
-			.remove();
+			.remove()
+			;
+
+//this all doesn't make sense
+		//get size fields after exit
+		let sizeFieldsPostExit = getSizeFields( selectors );
+		//get width fields after exit
+		let widthObjPostExit = getChartWidth(sizeFieldsPostExit);
+
+		// translate g inside svg for axis container
+		selectors.artboard.attr("transform", "translate(" + widthObjPostExit.marginLeft + "," + sizeFieldsPostExit.marginTop + ")");
 
 		// give the x axis the resized scale
 		xAxis.scale(xScale);
 
 		// draw the new xAxis
 		selectors.xAxisEl.call(xAxis);
+//call the wrap method somewhere in here too
+		//rescale yAxis
+		selectors.yAxisEl.call(yAxis);
+console.log('hideAxis', widthObjPostExit.hideAxis, 'height', sizeFieldsPostExit.height, 'width', sizeFieldsPostExit.divWidth);
+
+		//wrap text on the yaxis
+		selectors.yAxisEl.selectAll(".tick text")
+			.call(axisTextWrap, 90)//second param is size for axis
+			;
+		//change yaxis and hide if width below "small" screen size breakpoint
+		selectors.yAxisEl.transition()
+				.duration(1000)
+				.ease(d3.easeLinear)
+				.style("opacity",(widthObjPostExit.hideAxis ? 0 : 1));
 	}
 	function getSizeFields( selectors ) {
 		/*------------------------------------------------------
@@ -204,13 +213,14 @@ define( ["qlik"
 	}
 
 	function getChartWidth(sizeFields) {
-				//get the total axis height
+		//get the total axis height
 		let yAxisText = $('.qv-object-sense-d3-gantt .yAxis.gantt g.tick text'),
 			yAxisG = $('.qv-object-sense-d3-gantt .yAxis.gantt g.tick');
 		let yAxisHeight = 0;
 		yAxisText.each(function (index) {
 			yAxisHeight += parseInt($(this)[0].getBoundingClientRect().height, 10);
 		});
+console.log('yAxisHeight', yAxisHeight);
 
 		// check if axis height can fit in canvas
 		let hideAxis 	= (sizeFields.height < yAxisHeight) || (sizeFields.divWidth<=480),
@@ -263,9 +273,9 @@ define( ["qlik"
 							.tickSize(5),
 			numOfPts	= d3.max(data, function(d, i) { return i; })+1;
 
-		var transitionDuration = (numOfPts<5 ? 2500 : 5000)/numOfPts;
+		let transitionDuration = (numOfPts<5 ? 2500 : 5000)/numOfPts;
 
-		//change yaxis and hide if width below "small" screen size breakpoint
+		//rescale yAxis
 		selectorVar.yAxisEl.call(yAxis);
 
 		//wrap text on the yaxis
@@ -276,6 +286,7 @@ define( ["qlik"
 		//get width object for sizing purposes
 		let widthObj = getChartWidth(sizeFields);
 
+//replace the three statements below
 		//get the total axis height
 		let yAxisText = $('.qv-object-sense-d3-gantt .yAxis.gantt g.tick text'),
 			yAxisG = $('.qv-object-sense-d3-gantt .yAxis.gantt g.tick');
@@ -290,7 +301,7 @@ define( ["qlik"
 			width 		= sizeFields.divWidth - marginLeft - sizeFields.marginRight;
 
 		// translate g inside svg for axis container
-		selectorVar.artboard.attr("transform", "translate(" + marginLeft + "," + sizeFields.marginTop + ")")
+		selectorVar.artboard.attr("transform", "translate(" + marginLeft + "," + sizeFields.marginTop + ")");
 
 		// set the svg dimensions
 		selectorVar.svg.attr("width", sizeFields.divWidth - 5)
@@ -324,8 +335,8 @@ define( ["qlik"
 				.attr("x", function (d) {
 				 	return xScale(d.TimeStart);
 				 })
-				.attr('rx', width*.001)
-				.attr('ry', width*.001)//used for curved bars
+				.attr('rx', 2)
+				.attr('ry', 2)//used for curved bars
 				.attr('width', function(d){
 					let taskDuration = moment(moment(d.TimeStart).diff(minDate));
 					let barLength = moment(moment(d.TimeEnd).diff(taskDuration));
@@ -392,11 +403,12 @@ define( ["qlik"
 			.attr("id", "bars")
 			.attr("transform", "translate(0,0)")
 			.selectAll("rect")
-			.data( data )
+			.data( data, function (d) {
+				return d.ID;
+			})
 			.enter()
 			.append("rect")
-			.attr("class", "selectable")
-			.attr("class", "lassoable")
+			.attr("class", "selectable lassoable")
 			.attr('data-value', function (d) {
 				return d.ID;
 			})
@@ -412,7 +424,7 @@ define( ["qlik"
 			.style("stroke", 'black')
 			.style("stroke-width", 0.25)
 			// add tooltips to each bar
-			.on("mouseover", tooltipStart)          
+			.on("mouseover", tooltipStart)
 			.on("mouseout", tooltipEnd)
 		;
 
@@ -426,33 +438,36 @@ define( ["qlik"
 			'yAxisEl'	: yAxisEl
 		};
 
-		function tooltipStart(d, i, bars) {
-			let bar				= $(bars[i]),
-				topBar 			= bar.offset().top,
-				divParent		= bar.closest('.container'),
-				topDivParent	= divParent.offset().top,
-				leftDivParent	= divParent.offset().left;
-			
-			// create transitions for tooltip
-			tooltipDiv.transition()
-				.duration(200)
-				.style("opacity", .9);
-			tooltipDiv .html( d.Dim+ " from " + moment(d.TimeStart).format("MMM YYYY") + ' to ' + moment(d.TimeEnd).format("MMM YYYY"))
-				.style("left", (d3.event.pageX - leftDivParent) + "px")
-				.style("top", (d3.event.pageY - topDivParent- 28) + "px");
-
-		 }
-
-		function tooltipEnd(d) {
-			//hide tooltip
-			tooltipDiv.transition()
-				.duration(500)
-				.style("opacity", 0);
-		}
 
 		// call function to call components based on size
 		resizeChart( data, chartID, selectors );
 
+	}
+
+	function tooltipStart(d, i, bars) {
+		let tooltipDiv		= d3.select('div.tooltip'),
+			bar				= $(bars[i]),
+			topBar 			= bar.offset().top,
+			divParent		= bar.closest('.container'),
+			topDivParent	= divParent.offset().top,
+			leftDivParent	= divParent.offset().left;
+		
+		// create transitions for tooltip
+		tooltipDiv.transition()
+			.duration(200)
+			.style("opacity", .9);
+		tooltipDiv .html( d.Dim+ " from " + moment(d.TimeStart).format("MMM YYYY") + ' to ' + moment(d.TimeEnd).format("MMM YYYY"))
+			.style("left", (d3.event.pageX - leftDivParent) + "px")
+			.style("top", (d3.event.pageY - topDivParent- 28) + "px");
+
+	 }
+
+	function tooltipEnd(d) {
+		let tooltipDiv		= d3.select('div.tooltip');
+		//hide tooltip
+		tooltipDiv.transition()
+			.duration(500)
+			.style("opacity", 0);
 	}
 
 	function lassoItems( svg ) {
@@ -636,41 +651,60 @@ define( ["qlik"
 
 	}
 
-	function bindSelections( layout, $element, app_this, $scope ) {
+	function bindSelections( layout, $element, $scope ) {
 		/*------------------------------------------------------
 		Used to create selection objects for chart interactivity
 		------------------------------------------------------*/
-		let selectionsEnabled,
-			scope;
+		// let selectionsEnabled;
 
-		//check what parameters have been passed to the function and create varialbes
-		if (!app_this) {
-			selectionsEnabled 	= true,
-			scope 				= $scope;
-		} else {
-			selectionsEnabled 	= app_this.selectionsEnabled,
-			scope 				= app_this.$scope;
-		}
+		// //check what parameters have been passed to the function and create varialbes
+		// if (!app_this) {
+		// 	selectionsEnabled 	= true;
+		// } else {
+		// 	selectionsEnabled 	= app_this.selectionsEnabled;
+		// }
+
+		/*
+		-Selection logic
+			-when bars created, mark as selectable
+			-Find all elements that are selectable
+			-bind an event listener to fire on qv-activate
+			-ensure that the element has a data-value attribute
+			-use the $scope.selectedValues method to call the optional selection
+			-if the element is selected, add the selected class
+			-if the element is not selected ensure
+			-add active class to all elements
+
+		-checks needed
+			-event listener is only bound once
+
+		*/
 
 		//check that selections are enabled and the selection mode is set properly
-		if(selectionsEnabled && layout.selectionMode !== "NO") {
-			$element.find('.selectable').on('qv-activate', function() {
+		if(layout.selectionMode !== "NO") {
+			$element.find('.selectable').off('qv-activate.rect').on('qv-activate.rect', function() {
+// console.log('selection function fired', $(this).attr("class"));
 				if(this.hasAttribute("data-value")) {
 					var value = parseInt(this.getAttribute("data-value"), 10), dim = 0;
 
 					if(layout.selectionMode === "CONFIRM") {
-						scope.selectValues(dim, [value], true);
+						$scope.selectValues(dim, [value], true);
 
 						//set classes for selectable/selected depending on what was already set
+						//if 'selected' class found on the current element, add selectable indicator
 						if ($(this).attr("class").indexOf("selected") > -1) {
+console.log('selected:', $(this).attr("class"));
 							var selClass = $(this).attr("class");
 							$(this).attr("class", selClass.replace("selected", "selectable"));
 						} else {
-							$(this).attr("class", "selected");
+console.log('not selected yet:', $(this).attr("class"));
+							var selClass = $(this).attr("class");
+							$(this).attr("class", selClass.replace("selectable", "selected"));
 						}
 					} else {
-						scope.backendApi.selectValues(dim, [value], true);
+						$scope.backendApi.selectValues(dim, [value], true);
 					}
+// console.log('bar', $(this));
 				}
 			});
 			$element.find('.selectable').toggleClass('active');
@@ -721,14 +755,14 @@ define( ["qlik"
 					initChartRender(app_this.$scope);
 					app_this.$scope.paint = true;
 				}
-				// build selection model - utlizing the confirm selection model
-				bindSelections(layout, $element, app_this);
 
+// console.log('selections enabled', app_this.selectionsEnabled);
+
+					// build selection model - utlizing the confirm selection model
+					bindSelections(layout, $element, app_this.$scope);
 			}
 		},
 		controller: ['$scope', function ($scope) {
-			let events = $scope.events =  [];
-
 			//detect data changes
 			$scope.$watch("layout.qHyperCube.qDataPages[0].qMatrix", function (newVal, oldVal) {
 				if (!arraysEqual(oldVal,newVal) && newVal!==undefined){
@@ -757,7 +791,7 @@ define( ["qlik"
 
 					initChartRender($scope);
 					$scope.paint = true;
-					bindSelections($scope.$parent.layout, $scope.$element, '', $scope);
+					bindSelections($scope.$parent.layout, $scope.$element, $scope);
 				}
 			});
 		}]
