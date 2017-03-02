@@ -178,10 +178,10 @@ define( ["qlik"
 
 		// draw the new xAxis
 		selectors.xAxisEl.call(xAxis);
-//call the wrap method somewhere in here too
+		
 		//rescale yAxis
 		selectors.yAxisEl.call(yAxis);
-console.log('hideAxis', widthObjPostExit.hideAxis, 'height', sizeFieldsPostExit.height, 'width', sizeFieldsPostExit.divWidth);
+// console.log('hideAxis', widthObjPostExit.hideAxis, 'height', sizeFieldsPostExit.height, 'width', sizeFieldsPostExit.divWidth);
 
 		//wrap text on the yaxis
 		selectors.yAxisEl.selectAll(".tick text")
@@ -220,7 +220,7 @@ console.log('hideAxis', widthObjPostExit.hideAxis, 'height', sizeFieldsPostExit.
 		yAxisText.each(function (index) {
 			yAxisHeight += parseInt($(this)[0].getBoundingClientRect().height, 10);
 		});
-console.log('yAxisHeight', yAxisHeight);
+// console.log('yAxisHeight', yAxisHeight);
 
 		// check if axis height can fit in canvas
 		let hideAxis 	= (sizeFields.height < yAxisHeight) || (sizeFields.divWidth<=480),
@@ -615,7 +615,7 @@ console.log('yAxisHeight', yAxisHeight);
 		return data;
 	}
 
-	function validDataObject (layout) {
+	function validDataObject (data) {
 		/*------------------------------------------------------
 		Test for edge cases to make sure that the data object is valid
 		------------------------------------------------------*/
@@ -683,7 +683,7 @@ console.log('yAxisHeight', yAxisHeight);
 		//check that selections are enabled and the selection mode is set properly
 		if(layout.selectionMode !== "NO") {
 			$element.find('.selectable').off('qv-activate.rect').on('qv-activate.rect', function() {
-// console.log('selection function fired', $(this).attr("class"));
+console.log('selection function fired:', $(this).attr("class"));
 				if(this.hasAttribute("data-value")) {
 					var value = parseInt(this.getAttribute("data-value"), 10), dim = 0;
 
