@@ -710,6 +710,23 @@ console.log('not selected yet:', $(this).attr("class"));
 			$element.find('.selectable').toggleClass('active');
 		}
 	}
+	function barSelectionClasses( element, dataset, chartID ) {
+// console.log('el', element);
+		let selectors = getSelectors( chartID );
+		let data = dataset.map(function ( d ) {
+console.log('indiv d: ', d[0]);
+			let singleD = {
+				'id'	: d[0].qElemNumber,
+				'state'	: d[0].qState
+			}
+			selectors.bars
+				.filter(function (p) { return p.ID===d[0].qElemNumber; })
+				.attr("class", "lassoable " + singleD.state==='S' ? 'selected' : 'selectable');
+			return singleD;
+		});
+
+console.log('fired/cleaned', data);
+	}
 
 	return {
        template: template,
@@ -758,8 +775,11 @@ console.log('not selected yet:', $(this).attr("class"));
 
 // console.log('selections enabled', app_this.selectionsEnabled);
 
-					// build selection model - utlizing the confirm selection model
-					bindSelections(layout, $element, app_this.$scope);
+				// build selection model - utlizing the confirm selection model
+				bindSelections(layout, $element, app_this.$scope);
+
+				//function to clean up selection classes after data changes
+				barSelectionClasses($element, layout.qHyperCube.qDataPages[0].qMatrix, chartID);
 			}
 		},
 		controller: ['$scope', function ($scope) {
@@ -767,7 +787,10 @@ console.log('not selected yet:', $(this).attr("class"));
 			$scope.$watch("layout.qHyperCube.qDataPages[0].qMatrix", function (newVal, oldVal) {
 				if (!arraysEqual(oldVal,newVal) && newVal!==undefined){
 					let data = dataObj($scope.$parent.layout);
+// console.log('data change fired', $scope.$parent.layout);
 					dataChanges(data, $scope.id);
+					// //function to clean up selection classes after data changes
+					// barSelectionClasses($scope.$parent.layout.qHyperCube.qDataPages[0].qMatrix);
 				}
 			});
 
