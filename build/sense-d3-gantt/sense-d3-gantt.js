@@ -19,7 +19,8 @@ define( ["qlik"
 		,'./assets/js/d3.min'
 		// ,'//d3js.org/d3.v4.min.js'
 		,'require'
-		,'https://momentjs.com/downloads/moment.js'
+		// ,'https://momentjs.com/downloads/moment.js'
+		,'./bower_components/moment/moment'
 		,'./assets/js/d3-lasso'
 		,'./bower_components/QlikSenseD3Utils/senseD3utils'
 		// ,'https://d3js.org/d3-scale-chromatic.v1.min.js'
@@ -73,13 +74,12 @@ define( ["qlik"
 		return yScale;
 	}
 	function dataChanges( data, chartID ) {
-
 		//get chart selectors
 		let selectors = getSelectors(chartID);
 		//get size fields
 		let sizeFields = getSizeFields( selectors );
 		//get width
-		let widthObj = getChartWidth(sizeFields);
+		let widthObj = getChartWidth(sizeFields, data.length);
 
 		// set data related vars
 		let xScale 		= createXScale( data ),
@@ -137,6 +137,7 @@ define( ["qlik"
 		//Update…
 		bars.transition()
 			.duration(1000)
+			.attr("transform", "translate(" + widthObj.marginLeft + "," + (sizeFields.marginTop) + ")")
 			.attr("x", function(d, i) {
 				return xScale(d.TimeStart);
 			})
@@ -164,14 +165,8 @@ define( ["qlik"
 			.remove()
 			;
 
-//this all doesn't make sense
-		//get size fields after exit
-		let sizeFieldsPostExit = getSizeFields( selectors );
-		//get width fields after exit
-		let widthObjPostExit = getChartWidth(sizeFieldsPostExit);
-
 		// translate g inside svg for axis container
-		selectors.artboard.attr("transform", "translate(" + widthObjPostExit.marginLeft + "," + sizeFieldsPostExit.marginTop + ")");
+		selectors.artboard.attr("transform", "translate(" + widthObj.marginLeft + "," + sizeFields.marginTop + ")");
 
 		// give the x axis the resized scale
 		xAxis.scale(xScale);
@@ -181,7 +176,6 @@ define( ["qlik"
 		
 		//rescale yAxis
 		selectors.yAxisEl.call(yAxis);
-// console.log('hideAxis', widthObjPostExit.hideAxis, 'height', sizeFieldsPostExit.height, 'width', sizeFieldsPostExit.divWidth);
 
 		//wrap text on the yaxis
 		selectors.yAxisEl.selectAll(".tick text")
@@ -191,7 +185,7 @@ define( ["qlik"
 		selectors.yAxisEl.transition()
 				.duration(1000)
 				.ease(d3.easeLinear)
-				.style("opacity",(widthObjPostExit.hideAxis ? 0 : 1));
+				.style("opacity",(widthObj.hideAxis ? 0 : 1));
 	}
 	function getSizeFields( selectors ) {
 		/*------------------------------------------------------
@@ -212,18 +206,18 @@ define( ["qlik"
 		return sizeFields;
 	}
 
-	function getChartWidth(sizeFields) {
-		//get the total axis height
-		let yAxisText = $('.qv-object-sense-d3-gantt .yAxis.gantt g.tick text'),
-			yAxisG = $('.qv-object-sense-d3-gantt .yAxis.gantt g.tick');
-		let yAxisHeight = 0;
-		yAxisText.each(function (index) {
-			yAxisHeight += parseInt($(this)[0].getBoundingClientRect().height, 10);
-		});
+	function getChartWidth(sizeFields, dataSize) {
+		// //get the total axis height
+		// let yAxisText = $('.qv-object-sense-d3-gantt .yAxis.gantt g.tick text'),
+		// 	yAxisG = $('.qv-object-sense-d3-gantt .yAxis.gantt g.tick');
+		// let yAxisHeight = 0;
+		// yAxisText.each(function (index) {
+		// 	yAxisHeight += parseInt($(this)[0].getBoundingClientRect().height, 10);
+		// });
 // console.log('yAxisHeight', yAxisHeight);
 
 		// check if axis height can fit in canvas
-		let hideAxis 	= (sizeFields.height < yAxisHeight) || (sizeFields.divWidth<=480),
+		let hideAxis 	= (dataSize > 10) || (sizeFields.divWidth<=480),
 			marginLeft 	= hideAxis ? 0 : 100,
 			width 		= sizeFields.divWidth - marginLeft - sizeFields.marginRight;
 
@@ -470,60 +464,6 @@ define( ["qlik"
 			.style("opacity", 0);
 	}
 
-	function lassoItems( svg ) {
-		/*------------------------------------------------------
-		Create a lasso selection using the d3.lasso library
-		------------------------------------------------------*/
-		// Define the lasso
-		var lasso = d3.lasso()
-			.closePathDistance(75) // max distance for the lasso loop to be closed
-			.closePathSelect(true) // can items be selected by closing the path?
-			.hoverSelect(true) // can items by selected by hovering over them?
-			.area(svg.selectAll('.lassoable')) // a lasso can be drawn on the bg rectangle and any of the circles on top of it
-			.items(circles) // the circles will be evaluated for lassoing
-			.on("start",lasso_start) // lasso start function
-			.on("draw",lasso_draw) // lasso draw function
-			.on("end",lasso_end) // lasso end function
-			;
-
-		svg.call(lasso);
-
-		function lasso_start() {
-		lasso.items()
-		.classed({"not-possible":true}); // style as not possible
-		}
-
-		function lasso_draw() {
-
-		// Style the possible dots
-		lasso.items().filter(function(d) {return d.possible===true})
-		.classed({"not-possible":false,"possible":true});
-
-		// Style the not possible dot
-		lasso.items().filter(function(d) {return d.possible===false})
-		.classed({"not-possible":true,"possible":false});
-
-		}
-
-		function lasso_end() {
-
-		// Get all the lasso items that were "selected" by the user
-		var selectedItems = lasso.items()
-			.filter(function(d) {
-				return d.selected;
-			});
-
-		// Retrieve the dimension element numbers for the selected items
-		var elemNos = selectedItems[0]
-			.map(function(d) {
-				return d.__data__[0].qElemNumber;
-			});
-
-		// Filter these dimension values
-		self.backendApi.selectValues(0,elemNos,true);
-		}
-	}
-
 	//function to wrap text for axis
 	function axisTextWrap(text, width) {
 		/*------------------------------------------------------
@@ -683,7 +623,6 @@ define( ["qlik"
 		//check that selections are enabled and the selection mode is set properly
 		if(layout.selectionMode !== "NO") {
 			$element.find('.selectable').off('qv-activate.rect').on('qv-activate.rect', function() {
-console.log('selection function fired:', $(this).attr("class"));
 				if(this.hasAttribute("data-value")) {
 					var value = parseInt(this.getAttribute("data-value"), 10), dim = 0;
 
@@ -693,18 +632,15 @@ console.log('selection function fired:', $(this).attr("class"));
 						//set classes for selectable/selected depending on what was already set
 						//if 'selected' class found on the current element, add selectable indicator
 						if ($(this).attr("class").indexOf("selected") > -1) {
-console.log('selected:', $(this).attr("class"));
 							var selClass = $(this).attr("class");
 							$(this).attr("class", selClass.replace("selected", "selectable"));
 						} else {
-console.log('not selected yet:', $(this).attr("class"));
 							var selClass = $(this).attr("class");
 							$(this).attr("class", selClass.replace("selectable", "selected"));
 						}
 					} else {
 						$scope.backendApi.selectValues(dim, [value], true);
 					}
-// console.log('bar', $(this));
 				}
 			});
 			$element.find('.selectable').toggleClass('active');
@@ -714,7 +650,7 @@ console.log('not selected yet:', $(this).attr("class"));
 // console.log('el', element);
 		let selectors = getSelectors( chartID );
 		let data = dataset.map(function ( d ) {
-console.log('indiv d: ', d[0]);
+// console.log('indiv d: ', d[0]);
 			let singleD = {
 				'id'	: d[0].qElemNumber,
 				'state'	: d[0].qState
@@ -724,8 +660,7 @@ console.log('indiv d: ', d[0]);
 				.attr("class", "lassoable " + singleD.state==='S' ? 'selected' : 'selectable');
 			return singleD;
 		});
-
-console.log('fired/cleaned', data);
+// console.log('fired/cleaned', data);
 	}
 
 	return {
