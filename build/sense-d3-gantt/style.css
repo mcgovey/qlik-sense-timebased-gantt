@@ -1,5 +1,5 @@
 .qv-object-sense-d3-gantt div.qv-object-content-container {
-	overflow: auto;
+	overflow: none;
 	font-family: 'QlikView Sans', sans-serif;
 }
 .qv-object-sense-d3-gantt td,
