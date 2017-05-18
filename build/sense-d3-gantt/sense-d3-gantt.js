@@ -1,15 +1,15 @@
-requirejs.config({
-    paths: {
-      d3: "../extensions/sense-d3-gantt/assets/js/d3.min",
-      lasso: "../extensions/sense-d3-gantt/assets/js/d3-lasso"
-    },
-	shim : {
-		"lasso" : {
-          "exports" : "lasso",
-			"deps" : ["d3"]
-		}
-	}
-});
+// requirejs.config({
+//     paths: {
+//       d3: "../extensions/sense-d3-gantt/assets/js/d3.min",
+//       lasso: "../extensions/sense-d3-gantt/assets/js/d3-lasso"
+//     },
+// 	shim : {
+// 		"lasso" : {
+//           "exports" : "lasso",
+// 			"deps" : ["d3"]
+// 		}
+// 	}
+// });
 define( ["qlik"
 		,"jquery"
 		,"./assets/js/properties"
@@ -21,11 +21,11 @@ define( ["qlik"
 		,'require'
 		// ,'https://momentjs.com/downloads/moment.js'
 		,'./bower_components/moment/moment'
-		,'./assets/js/d3-lasso'
+		// ,'./assets/js/d3-lasso'
 		,'./bower_components/QlikSenseD3Utils/senseD3utils'
 		// ,'https://d3js.org/d3-scale-chromatic.v1.min.js'
 		], 
-	function (qlik, $, props, colorPalette, cssContent, template, d3, localRequire, moment, lasso) {
+	function (qlik, $, props, colorPalette, cssContent, template, d3, localRequire, moment) {//, lasso
 	'use strict';
 
     $("<style>").html(cssContent).appendTo("head");
@@ -512,6 +512,9 @@ define( ["qlik"
 			// get the max if the values in the range are more than the values in the dropdown selected
 			selectedScale = selectedScaleObj[layout.qHyperCube.qMeasureInfo[0].numOfColorVals > selectedScaleMax ? selectedScaleMax : layout.qHyperCube.qMeasureInfo[0].numOfColorVals]
 			;
+		
+		// Get the flags for what each dimension corresponds to
+		let dimensionMapping = dimFlags(layout);
 
 		//map the data to color variables, remove bad data, then store in a new object
 		let data = ganttData.map(function (inner_d) {
@@ -532,8 +535,8 @@ define( ["qlik"
 				dynamicColorVals = '#000000';
 			};
 
-			//create a flag for if data is valid
-			let goodData = inner_d.dim_0!=null && inner_d.dim_1!=null && inner_d.meas_0!=null
+			//create a flag for if row of data is valid
+			let goodDataRow = inner_d.dim_0!=null && inner_d.dim_1!=null && inner_d.meas_0!=null
 							&& inner_d.dim_0!='NA' && inner_d.dim_1!='NA' && inner_d.meas_0!='NA'
 							&& inner_d.meas_0>0
 							;
@@ -544,7 +547,7 @@ define( ["qlik"
 			  'ID'			: inner_d.dim_0_id,
 			  'TimeStart'	: moment(inner_d.dim_1, "M/D/YYYY").toDate(),
 			  'TimeEnd'		: moment(inner_d.dim_1, "M/D/YYYY").add(+inner_d.meas_0, 'days').toDate(),
-			  'goodData'	: goodData,
+			  'goodData'	: goodDataRow,
 			  'Color'		: dynamicColorVals
 			}
 			return indivJob;
@@ -555,7 +558,7 @@ define( ["qlik"
 		return data;
 	}
 
-	function validDataObject (data) {
+	function validDataObject (layout) {
 		/*------------------------------------------------------
 		Test for edge cases to make sure that the data object is valid
 		------------------------------------------------------*/
@@ -565,7 +568,31 @@ define( ["qlik"
 		-no measure
 		-second dim not of type date
 		-----------------------------------*/
+		function hasStartDate (element, index, array) {
+			var start = 2;
+			while (start <= Math.sqrt(element)) {
+				if (element % start++ < 1) {
+				return false;
+				}
+			}
+			return element > 1;
+		}
+		let startValExists = layout.qHyperCube.qDimensionInfo.find(hasStartDate);
+console.log('startValExists', startValExists);
 		return true;
+	}
+
+	//create an array that indicates what is contained in each dimension
+	function dimFlags (layout) {
+		return layout.qHyperCube.qDimensionInfo.map(function(dim){
+			if(dim.startDate===true){
+				return 'SD';
+			} else if (dim.milestoneFlag===true){
+				return 'MF-' + dim.milestoneIcon;
+			} else if (dim.milestoneDateFlag===true){
+				return 'MD-' + dim.milestoneIcon;
+			}
+		});
 	}
 
 	function initChartRender(scope) {
@@ -700,6 +727,16 @@ define( ["qlik"
 
 			app_this.$scope.$element = $element;
 
+			// Get the flags for what each dimension corresponds to
+			let dimensionMapping = dimFlags(layout);
+
+			app_this.$scope.notValid = dimensionMapping.indexOf('SD') < 0 ? true : false && (+layout.calcCondition===-1 || layout.calcCondition===""),
+			app_this.$scope.validationMsg = layout.calcConditionMsg;
+
+// console.log('scope', app_this.$scope,'dimension mapping', dimensionMapping, 'calc forced',+layout.calcCondition,'calc nat',layout.calcCondition);
+			// If the chart isn't valid, stop drawing it
+			if(app_this.$scope.notValid===true) return;
+
 			if(layout.qHyperCube.qDataPages[0] && $element.find('div#gantt_' + chartID).length>0) {
 				if (app_this.$scope.paint===true) {
 					console.log('already painted');
@@ -707,8 +744,6 @@ define( ["qlik"
 					initChartRender(app_this.$scope);
 					app_this.$scope.paint = true;
 				}
-
-// console.log('selections enabled', app_this.selectionsEnabled);
 
 				// build selection model - utlizing the confirm selection model
 				bindSelections(layout, $element, app_this.$scope);
@@ -722,7 +757,7 @@ define( ["qlik"
 			$scope.$watch("layout.qHyperCube.qDataPages[0].qMatrix", function (newVal, oldVal) {
 				if (!arraysEqual(oldVal,newVal) && newVal!==undefined){
 					let data = dataObj($scope.$parent.layout);
-// console.log('data change fired', $scope.$parent.layout);
+console.log('data change fired', $scope.$parent.layout);
 					dataChanges(data, $scope.id);
 					// //function to clean up selection classes after data changes
 					// barSelectionClasses($scope.$parent.layout.qHyperCube.qDataPages[0].qMatrix);
@@ -738,7 +773,8 @@ define( ["qlik"
 								,"layout.qHyperCube.qMeasureInfo[0].colorType"
 								,"layout.qHyperCube.qMeasureInfo[0].numOfColorVals"
 								,"layout.qHyperCube.qMeasureInfo[0].scaleColorVal"
-								,"layout.qHyperCube.qMeasureInfo[0].singleColorVal"];
+								,"layout.qHyperCube.qMeasureInfo[0].singleColorVal"
+								,"notValid"];
 
 			//watch for property changes defined above
 			$scope.$watchGroup(fieldsToWatch, function (newVal, oldVal) {

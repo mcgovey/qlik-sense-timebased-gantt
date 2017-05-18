@@ -1,3 +1,6 @@
 <div qv-extension style="height: 100%; position: relative; overflow: auto;">
-	<div style="height: 100%;" ng-attr-id="{{ 'gantt_' + id }}"></div>
+	<div ng-if="notValid">
+		<h1>{{validationMsg}}</h1>
+	</div>
+	<div ng-if="!notValid" style="height: 100%;" ng-attr-id="{{ 'gantt_' + id }}"></div>
 </div>
