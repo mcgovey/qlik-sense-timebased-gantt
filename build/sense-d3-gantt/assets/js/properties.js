@@ -149,8 +149,75 @@ define( [], function () {
 			items : {
 				dimensions : {
 					uses : "dimensions",
-					min : 2
-					// ,max : 5
+					min : 2,
+					items: {
+						startDateFlag: {
+							type 		: "boolean",
+							label 		: "Bar Start Date",
+							ref 		: "qDef.startDate",
+							defaultValue: false,
+							show		: function(data, ext) {
+								//check that milestones are used before showing this property
+								var dimProps = ext.layout.qHyperCube.qDimensionInfo;
+								function findMilestoneFlags(dim) { 
+									return dim.startDate === true;
+								}
+								var flagSearchVal = dimProps.find(findMilestoneFlags);
+								//show prop if the flag hasn't been set or the flag has only been set for the current prop - and the current prop does not have a milstone flag and the milestone date flag has not been set 
+								return (typeof flagSearchVal !== 'object' || flagSearchVal.cId === data.qDef.cId) && data.qDef.milestoneFlag !== true && data.qDef.milestoneDateFlag !== true;
+							}
+						},
+						milestoneFlag: {
+							type 		: "boolean",
+							label 		: "Milestone Flag (Yes/No, 1/0)",
+							ref 		: "qDef.milestoneFlag",
+							defaultValue: false,
+							show		: function(data, ext) {
+								//check that milestones are used before showing this property
+								var dimProps = ext.layout.qHyperCube.qDimensionInfo;
+								function findMilestoneFlags(dim) { 
+									return dim.milestoneFlag === true || dim.milestoneDateFlag === true;
+								}
+								var flagSearchVal = dimProps.find(findMilestoneFlags);
+								//show prop if the flag hasn't been set or the flag has only been set for the current prop - and the current prop does not have a milstone date flag and the start date has not been set 
+								return (typeof flagSearchVal !== 'object' || flagSearchVal.cId === data.qDef.cId) && data.qDef.milestoneDateFlag !== true && data.qDef.startDate !== true;
+							}
+						},
+						milestoneDate: {
+							type 		: "boolean",
+							label 		: "Milestone Date",
+							ref 		: "qDef.milestoneDateFlag",
+							defaultValue: false,
+							// show		: function(data) {
+							// 	return true;//data.qDef.colorType == "useStatus";
+							// }
+							show		: function(data, ext) {
+								//check that milestones are used before showing this property
+								var dimProps = ext.layout.qHyperCube.qDimensionInfo;
+								function findMilestoneFlags(dim) { 
+									return dim.milestoneDateFlag === true || dim.milestoneFlag === true;
+								}
+								var flagSearchVal = dimProps.find(findMilestoneFlags);
+								//show prop if the flag hasn't been set or the flag has only been set for the current prop - and the current prop does not have a milstone flag and the start date has not been set 
+								return (typeof flagSearchVal !== 'object' || flagSearchVal.cId === data.qDef.cId) && data.qDef.milestoneFlag !== true && data.qDef.startDate !== true;
+							}
+						},
+						milestoneIcon: {
+							type 		: "string",
+							expression	: "optional",
+							label 		: "Icon for milestone",
+							ref 		: "qDef.milestoneIcon",
+							defaultValue: "",
+							show		: function(data) {
+								return data.qDef.milestoneDateFlag===true || data.qDef.milestoneFlag===true;
+							}
+						}
+					}
+					// Possible data validations
+					// no start date selected
+					// multiple start dates selected
+					// milestone flag and date selected
+
 				},
 				measures : {
 					uses : "measures",
@@ -237,12 +304,33 @@ define( [], function () {
 				settings : {
 					uses : "settings"
 					,items : {
-						initFetchRows : {
-							ref : "qHyperCubeDef.qInitialDataFetch.0.qHeight",
-							label : "Max Rows to Display",
-							type : "number",
-							defaultValue : 50
+						appearance: {
+							type : "items",
+							label: "Configuration",
+							items : {
+								initFetchRows : {
+									ref : "qHyperCubeDef.qInitialDataFetch.0.qHeight",
+									label : "Max Rows to Display",
+									type : "number",
+									defaultValue : 50
+								},
+								calcCondition : {
+									ref : "calcCondition",
+									label : "Calculation Condition",
+									type: "string",
+									expression: "optional",
+									defaultValue: ""
+								},
+								invalidConfigMessage : {
+									ref : "calcConditionMsg",
+									label : "Text Displayed if Chart Not Configured Properly",
+									type: "string",
+									expression: "optional",
+									defaultValue: "Please flag one dimension as the start date"
+								}
+							}
 						}
+						
 					}
 				}
 			}
